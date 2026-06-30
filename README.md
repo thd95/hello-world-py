@@ -2,7 +2,7 @@
 
 Ein einfaches Python-Demoprojekt zum Lernen von Git und GitHub.
 
-## Instalation
+## Installation
 
 ```bash
 pip install -r requirements.txt
