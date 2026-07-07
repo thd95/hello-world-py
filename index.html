@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Zufallstext &amp; DAX-Kurse</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: #0d0d0d;
+      color: #e0e0e0;
+      font-family: "Courier New", monospace;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+      padding: 2rem;
+    }
+
+    h1 {
+      font-size: 1.4rem;
+      letter-spacing: 0.15em;
+      margin-bottom: 0.4rem;
+      color: #aaa;
+    }
+
+    .subtitle {
+      font-size: 0.8rem;
+      color: #555;
+      margin-bottom: 1.5rem;
+    }
+
+    /* Tabs */
+    .tabs {
+      display: flex;
+      gap: 0;
+      margin-bottom: 1.5rem;
+      border-bottom: 1px solid #333;
+      width: 100%;
+      max-width: 680px;
+    }
+
+    .tab {
+      padding: 0.5rem 1.2rem;
+      cursor: pointer;
+      font-family: inherit;
+      font-size: 0.85rem;
+      color: #555;
+      background: none;
+      border: none;
+      border-bottom: 2px solid transparent;
+      margin-bottom: -1px;
+      transition: color 0.15s, border-color 0.15s;
+    }
+
+    .tab:hover { color: #aaa; }
+    .tab.aktiv { color: #e0e0e0; border-bottom-color: #6bffff; }
+
+    .panel { display: none; width: 100%; max-width: 680px; }
+    .panel.aktiv { display: block; }
+
+    /* Zufallstext-Panel */
+    .controls {
+      display: flex;
+      gap: 0.75rem;
+      margin-bottom: 1.5rem;
+      align-items: center;
+    }
+
+    label { color: #888; font-size: 0.9rem; }
+
+    input[type="number"] {
+      width: 80px;
+      background: #1a1a1a;
+      border: 1px solid #333;
+      border-radius: 4px;
+      color: #e0e0e0;
+      font-family: inherit;
+      font-size: 1rem;
+      padding: 0.4rem 0.6rem;
+      text-align: center;
+      outline: none;
+    }
+    input[type="number"]:focus { border-color: #555; }
+
+    button {
+      background: #1e1e1e;
+      border: 1px solid #444;
+      border-radius: 4px;
+      color: #ccc;
+      cursor: pointer;
+      font-family: inherit;
+      font-size: 0.9rem;
+      padding: 0.4rem 1rem;
+      transition: background 0.15s, border-color 0.15s;
+    }
+    button:hover { background: #2a2a2a; border-color: #666; }
+    button:active { background: #333; }
+
+    #output {
+      background: #111;
+      border: 1px solid #222;
+      border-radius: 6px;
+      padding: 1rem 1.2rem;
+      min-height: 120px;
+      font-size: 0.95rem;
+      line-height: 1.9;
+    }
+
+    .leer { color: #333; font-style: italic; }
+    #counter { margin-top: 0.75rem; font-size: 0.75rem; color: #444; }
+
+    /* DAX-Panel */
+    .dax-controls {
+      display: flex;
+      gap: 0.75rem;
+      margin-bottom: 1rem;
+      align-items: center;
+    }
+
+    #dax-status {
+      font-size: 0.8rem;
+      color: #555;
+      margin-bottom: 1rem;
+    }
+
+    #dax-status.fehler { color: #ff6b6b; }
+    #dax-status.ok { color: #6bff8e; }
+
+    .tabelle-wrapper {
+      overflow-y: auto;
+      max-height: 480px;
+      border: 1px solid #222;
+      border-radius: 6px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.9rem;
+    }
+
+    thead th {
+      background: #1a1a1a;
+      color: #888;
+      font-weight: normal;
+      letter-spacing: 0.05em;
+      padding: 0.6rem 1rem;
+      text-align: left;
+      position: sticky;
+      top: 0;
+    }
+
+    tbody tr { border-top: 1px solid #1a1a1a; }
+    tbody tr:hover { background: #161616; }
+
+    td {
+      padding: 0.45rem 1rem;
+      color: #ccc;
+    }
+
+    td.kurs {
+      color: #6bffff;
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .kein-daten {
+      text-align: center;
+      padding: 2rem;
+      color: #333;
+      font-style: italic;
+    }
+
+    #dax-info {
+      margin-top: 0.6rem;
+      font-size: 0.75rem;
+      color: #444;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>// Python-Demo</h1>
+  <p class="subtitle">Zufallstext-Generator &amp; DAX-Kurse</p>
+
+  <div class="tabs">
+    <button class="tab aktiv" onclick="zeigeTab('zufall', this)">Zufallstext</button>
+    <button class="tab" onclick="zeigeTab('dax', this)">DAX-Kurse</button>
+  </div>
+
+  <!-- Panel 1: Zufallstext -->
+  <div id="panel-zufall" class="panel aktiv">
+    <div class="controls">
+      <label for="anzahl">Anzahl:</label>
+      <input type="number" id="anzahl" min="1" max="200" value="5">
+      <button onclick="generieren()">Generieren</button>
+      <button onclick="leeren()">Leeren</button>
+    </div>
+    <div id="output">
+      <span class="leer">← Anzahl eingeben und auf Generieren klicken</span>
+    </div>
+    <div id="counter"></div>
+  </div>
+
+  <!-- Panel 2: DAX-Kurse -->
+  <div id="panel-dax" class="panel">
+    <div class="dax-controls">
+      <button onclick="ladeDax()">Daten laden</button>
+    </div>
+    <div id="dax-status">Noch keine Daten geladen.</div>
+    <div class="tabelle-wrapper">
+      <table>
+        <thead>
+          <tr>
+            <th>Datum</th>
+            <th style="text-align:right">Eröffnung (Punkte)</th>
+          </tr>
+        </thead>
+        <tbody id="dax-tbody">
+          <tr><td colspan="2" class="kein-daten">Bitte „Daten laden" klicken</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div id="dax-info"></div>
+  </div>
+
+  <script>
+    /* ── Tab-Steuerung ── */
+    function zeigeTab(name, btn) {
+      document.querySelectorAll(".panel").forEach(p => p.classList.remove("aktiv"));
+      document.querySelectorAll(".tab").forEach(t => t.classList.remove("aktiv"));
+      document.getElementById("panel-" + name).classList.add("aktiv");
+      btn.classList.add("aktiv");
+    }
+
+    /* ── Zufallstext ── */
+    const FARBEN = ["#ff6b6b","#6bff8e","#ffd93d","#6bb5ff","#d06bff","#6bffff"];
+    const ZEICHEN = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 !?#@";
+
+    function zufallstext(laenge = 35) {
+      return Array.from({ length: laenge }, () =>
+        ZEICHEN[Math.floor(Math.random() * ZEICHEN.length)]
+      ).join("");
+    }
+
+    function generieren() {
+      const anzahl = parseInt(document.getElementById("anzahl").value, 10);
+      if (isNaN(anzahl) || anzahl < 1) return;
+      const output = document.getElementById("output");
+      output.innerHTML = "";
+      for (let i = 0; i < anzahl; i++) {
+        const zeile = document.createElement("div");
+        zeile.style.color = FARBEN[i % FARBEN.length];
+        zeile.textContent = zufallstext();
+        output.appendChild(zeile);
+      }
+      document.getElementById("counter").textContent =
+        `${anzahl} Zeile${anzahl !== 1 ? "n" : ""} generiert`;
+    }
+
+    function leeren() {
+      document.getElementById("output").innerHTML =
+        '<span class="leer">← Anzahl eingeben und auf Generieren klicken</span>';
+      document.getElementById("counter").textContent = "";
+    }
+
+    document.getElementById("anzahl").addEventListener("keydown", e => {
+      if (e.key === "Enter") generieren();
+    });
+
+    /* ── DAX-Kurse ── */
+    async function ladeDax() {
+      const status = document.getElementById("dax-status");
+      const tbody  = document.getElementById("dax-tbody");
+      const info   = document.getElementById("dax-info");
+
+      status.className = "";
+      status.textContent = "Lade dax_data.json …";
+      tbody.innerHTML = '<tr><td colspan="2" class="kein-daten">Lädt …</td></tr>';
+      info.textContent = "";
+
+      try {
+        // dax_data.json wird von fetch_dax.py erzeugt und liegt im selben Ordner
+        const res = await fetch("dax_data.json");
+        if (!res.ok) throw new Error(`HTTP ${res.status} — Datei nicht gefunden`);
+        const daten = await res.json();
+
+        if (!daten.length) {
+          throw new Error("Datei ist leer — fetch_dax.py erneut ausführen");
+        }
+
+        // Tabelle befüllen
+        tbody.innerHTML = daten.map(d => `
+          <tr>
+            <td>${d.datum}</td>
+            <td class="kurs">${d.eroeffnung.toLocaleString("de-DE", { minimumFractionDigits: 2 })}</td>
+          </tr>
+        `).join("");
+
+        status.className = "ok";
+        status.textContent = `✓ ${daten.length} Handelstage geladen`;
+        info.textContent =
+          `Zeitraum: ${daten.at(-1).datum} → ${daten[0].datum}`;
+
+      } catch (err) {
+        status.className = "fehler";
+        status.textContent = `✗ Fehler: ${err.message}`;
+        tbody.innerHTML = `<tr><td colspan="2" class="kein-daten">
+          Bitte zuerst fetch_dax.py ausführen:<br>
+          <code>python fetch_dax.py</code>
+        </td></tr>`;
+      }
+    }
+  </script>
+
+</body>
+</html>
