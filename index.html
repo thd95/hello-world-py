@@ -18,29 +18,17 @@
       padding: 2rem;
     }
 
-    h1 {
-      font-size: 1.4rem;
-      letter-spacing: 0.15em;
-      margin-bottom: 0.4rem;
-      color: #aaa;
-    }
+    h1 { font-size: 1.4rem; letter-spacing: 0.15em; margin-bottom: 0.4rem; color: #aaa; }
+    .subtitle { font-size: 0.8rem; color: #555; margin-bottom: 1.5rem; }
 
-    .subtitle {
-      font-size: 0.8rem;
-      color: #555;
-      margin-bottom: 1.5rem;
-    }
-
-    /* Tabs */
+    /* ── Tabs ── */
     .tabs {
       display: flex;
-      gap: 0;
       margin-bottom: 1.5rem;
       border-bottom: 1px solid #333;
       width: 100%;
-      max-width: 680px;
+      max-width: 720px;
     }
-
     .tab {
       padding: 0.5rem 1.2rem;
       cursor: pointer;
@@ -53,131 +41,118 @@
       margin-bottom: -1px;
       transition: color 0.15s, border-color 0.15s;
     }
-
     .tab:hover { color: #aaa; }
     .tab.aktiv { color: #e0e0e0; border-bottom-color: #6bffff; }
 
-    .panel { display: none; width: 100%; max-width: 680px; }
+    .panel { display: none; width: 100%; max-width: 720px; }
     .panel.aktiv { display: block; }
 
-    /* Zufallstext-Panel */
-    .controls {
-      display: flex;
-      gap: 0.75rem;
-      margin-bottom: 1.5rem;
-      align-items: center;
-    }
-
+    /* ── Zufallstext ── */
+    .controls { display: flex; gap: 0.75rem; margin-bottom: 1.5rem; align-items: center; }
     label { color: #888; font-size: 0.9rem; }
-
     input[type="number"] {
-      width: 80px;
-      background: #1a1a1a;
-      border: 1px solid #333;
-      border-radius: 4px;
-      color: #e0e0e0;
-      font-family: inherit;
-      font-size: 1rem;
-      padding: 0.4rem 0.6rem;
-      text-align: center;
-      outline: none;
+      width: 80px; background: #1a1a1a; border: 1px solid #333; border-radius: 4px;
+      color: #e0e0e0; font-family: inherit; font-size: 1rem;
+      padding: 0.4rem 0.6rem; text-align: center; outline: none;
     }
     input[type="number"]:focus { border-color: #555; }
-
     button {
-      background: #1e1e1e;
-      border: 1px solid #444;
-      border-radius: 4px;
-      color: #ccc;
-      cursor: pointer;
-      font-family: inherit;
-      font-size: 0.9rem;
-      padding: 0.4rem 1rem;
-      transition: background 0.15s, border-color 0.15s;
+      background: #1e1e1e; border: 1px solid #444; border-radius: 4px;
+      color: #ccc; cursor: pointer; font-family: inherit; font-size: 0.9rem;
+      padding: 0.4rem 1rem; transition: background 0.15s, border-color 0.15s;
     }
     button:hover { background: #2a2a2a; border-color: #666; }
     button:active { background: #333; }
-
     #output {
-      background: #111;
-      border: 1px solid #222;
-      border-radius: 6px;
-      padding: 1rem 1.2rem;
-      min-height: 120px;
-      font-size: 0.95rem;
-      line-height: 1.9;
+      background: #111; border: 1px solid #222; border-radius: 6px;
+      padding: 1rem 1.2rem; min-height: 120px; font-size: 0.95rem; line-height: 1.9;
     }
-
     .leer { color: #333; font-style: italic; }
     #counter { margin-top: 0.75rem; font-size: 0.75rem; color: #444; }
 
-    /* DAX-Panel */
-    .dax-controls {
+    /* ── DAX-Tabelle ── */
+    .dax-controls { display: flex; gap: 0.75rem; margin-bottom: 1rem; align-items: center; }
+    .dax-status { font-size: 0.8rem; color: #555; margin-bottom: 1rem; }
+    .dax-status.fehler { color: #ff6b6b; }
+    .dax-status.ok { color: #6bff8e; }
+    .tabelle-wrapper { overflow-y: auto; max-height: 480px; border: 1px solid #222; border-radius: 6px; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+    thead th {
+      background: #1a1a1a; color: #888; font-weight: normal; letter-spacing: 0.05em;
+      padding: 0.6rem 1rem; text-align: left; position: sticky; top: 0;
+    }
+    tbody tr { border-top: 1px solid #1a1a1a; }
+    tbody tr:hover { background: #161616; }
+    td { padding: 0.45rem 1rem; color: #ccc; }
+    td.kurs { color: #6bffff; text-align: right; font-variant-numeric: tabular-nums; }
+    .kein-daten { text-align: center; padding: 2rem; color: #333; font-style: italic; }
+    .dax-info { margin-top: 0.6rem; font-size: 0.75rem; color: #444; }
+
+    /* ── DAX-Chart ── */
+    #chart-wrap {
+      position: relative;
+      background: #111;
+      border: 1px solid #222;
+      border-radius: 6px;
+      padding: 1.2rem 1.2rem 0.8rem;
+      user-select: none;
+    }
+    #chart-svg { display: block; width: 100%; overflow: visible; }
+
+    /* Tooltip */
+    #tooltip {
+      position: absolute;
+      background: #1e1e1e;
+      border: 1px solid #333;
+      border-radius: 4px;
+      padding: 0.35rem 0.65rem;
+      font-size: 0.78rem;
+      color: #e0e0e0;
+      pointer-events: none;
+      white-space: nowrap;
+      display: none;
+    }
+    #tooltip .tt-datum { color: #888; margin-bottom: 0.1rem; }
+    #tooltip .tt-kurs  { color: #6bffff; font-size: 0.9rem; }
+
+    /* Crosshair */
+    #crosshair-line {
+      stroke: #444;
+      stroke-width: 1;
+      stroke-dasharray: 4 3;
+      pointer-events: none;
+      display: none;
+    }
+    #crosshair-dot {
+      fill: #0d0d0d;
+      stroke: #6bffff;
+      stroke-width: 2;
+      pointer-events: none;
+      display: none;
+    }
+
+    /* Range-Filter */
+    .chart-controls {
       display: flex;
-      gap: 0.75rem;
+      gap: 0.4rem;
       margin-bottom: 1rem;
       align-items: center;
     }
-
-    #dax-status {
-      font-size: 0.8rem;
-      color: #555;
-      margin-bottom: 1rem;
-    }
-
-    #dax-status.fehler { color: #ff6b6b; }
-    #dax-status.ok { color: #6bff8e; }
-
-    .tabelle-wrapper {
-      overflow-y: auto;
-      max-height: 480px;
-      border: 1px solid #222;
-      border-radius: 6px;
-    }
-
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 0.9rem;
-    }
-
-    thead th {
+    .range-btn {
+      padding: 0.25rem 0.65rem;
+      font-size: 0.78rem;
+      border-radius: 3px;
+      border: 1px solid #333;
       background: #1a1a1a;
-      color: #888;
-      font-weight: normal;
-      letter-spacing: 0.05em;
-      padding: 0.6rem 1rem;
-      text-align: left;
-      position: sticky;
-      top: 0;
+      color: #666;
+      cursor: pointer;
+      font-family: inherit;
+      transition: color 0.1s, border-color 0.1s;
     }
-
-    tbody tr { border-top: 1px solid #1a1a1a; }
-    tbody tr:hover { background: #161616; }
-
-    td {
-      padding: 0.45rem 1rem;
-      color: #ccc;
-    }
-
-    td.kurs {
-      color: #6bffff;
-      text-align: right;
-      font-variant-numeric: tabular-nums;
-    }
-
-    .kein-daten {
-      text-align: center;
-      padding: 2rem;
-      color: #333;
-      font-style: italic;
-    }
-
-    #dax-info {
-      margin-top: 0.6rem;
-      font-size: 0.75rem;
-      color: #444;
-    }
+    .range-btn:hover { color: #aaa; border-color: #555; }
+    .range-btn.aktiv { color: #6bffff; border-color: #6bffff; background: #0d1f1f; }
+    .chart-info { margin-top: 0.6rem; font-size: 0.75rem; color: #444; }
+    .chart-leer { text-align: center; padding: 4rem; color: #333; font-style: italic; }
   </style>
 </head>
 <body>
@@ -187,7 +162,8 @@
 
   <div class="tabs">
     <button class="tab aktiv" onclick="zeigeTab('zufall', this)">Zufallstext</button>
-    <button class="tab" onclick="zeigeTab('dax', this)">DAX-Kurse</button>
+    <button class="tab" onclick="zeigeTab('dax', this)">DAX-Tabelle</button>
+    <button class="tab" onclick="zeigeTab('chart', this)">DAX-Chart</button>
   </div>
 
   <!-- Panel 1: Zufallstext -->
@@ -198,121 +174,329 @@
       <button onclick="generieren()">Generieren</button>
       <button onclick="leeren()">Leeren</button>
     </div>
-    <div id="output">
-      <span class="leer">← Anzahl eingeben und auf Generieren klicken</span>
-    </div>
+    <div id="output"><span class="leer">← Anzahl eingeben und auf Generieren klicken</span></div>
     <div id="counter"></div>
   </div>
 
-  <!-- Panel 2: DAX-Kurse -->
+  <!-- Panel 2: DAX-Tabelle -->
   <div id="panel-dax" class="panel">
     <div class="dax-controls">
       <button onclick="ladeDax()">Daten laden</button>
     </div>
-    <div id="dax-status">Noch keine Daten geladen.</div>
+    <div id="dax-status" class="dax-status">Noch keine Daten geladen.</div>
     <div class="tabelle-wrapper">
       <table>
-        <thead>
-          <tr>
-            <th>Datum</th>
-            <th style="text-align:right">Eröffnung (Punkte)</th>
-          </tr>
-        </thead>
+        <thead><tr><th>Datum</th><th style="text-align:right">Eröffnung (Punkte)</th></tr></thead>
         <tbody id="dax-tbody">
           <tr><td colspan="2" class="kein-daten">Bitte „Daten laden" klicken</td></tr>
         </tbody>
       </table>
     </div>
-    <div id="dax-info"></div>
+    <div id="dax-info" class="dax-info"></div>
+  </div>
+
+  <!-- Panel 3: DAX-Chart -->
+  <div id="panel-chart" class="panel">
+    <div class="dax-controls">
+      <button onclick="ladeChart()">Daten laden</button>
+    </div>
+    <div id="chart-status" class="dax-status">Noch keine Daten geladen.</div>
+
+    <div class="chart-controls" id="range-buttons" style="display:none">
+      <span style="color:#555;font-size:0.78rem">Zeitraum:</span>
+      <button class="range-btn" onclick="setRange(90,this)">3 M</button>
+      <button class="range-btn" onclick="setRange(180,this)">6 M</button>
+      <button class="range-btn aktiv" onclick="setRange(365,this)">1 J</button>
+      <button class="range-btn" onclick="setRange(0,this)">Gesamt</button>
+    </div>
+
+    <div id="chart-wrap">
+      <div class="chart-leer" id="chart-leer">Bitte „Daten laden" klicken</div>
+      <svg id="chart-svg" style="display:none" aria-label="DAX Eröffnungskurs Zeitreihe">
+        <defs>
+          <linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%"   stop-color="#6bffff" stop-opacity="0.18"/>
+            <stop offset="100%" stop-color="#6bffff" stop-opacity="0"/>
+          </linearGradient>
+          <clipPath id="chartClip"><rect id="clipRect"/></clipPath>
+        </defs>
+        <!-- Grid lines -->
+        <g id="grid"></g>
+        <!-- Area fill -->
+        <path id="area-path" fill="url(#areaGrad)" clip-path="url(#chartClip)"/>
+        <!-- Line -->
+        <path id="line-path" fill="none" stroke="#6bffff" stroke-width="1.5"
+              stroke-linejoin="round" stroke-linecap="round" clip-path="url(#chartClip)"/>
+        <!-- Axes -->
+        <g id="x-axis"></g>
+        <g id="y-axis"></g>
+        <!-- Interactive overlay -->
+        <line id="crosshair-line"/>
+        <circle id="crosshair-dot" r="4"/>
+        <rect id="hit-area" fill="transparent" style="cursor:crosshair"/>
+      </svg>
+      <div id="tooltip">
+        <div class="tt-datum" id="tt-datum"></div>
+        <div class="tt-kurs"  id="tt-kurs"></div>
+      </div>
+    </div>
+    <div id="chart-info" class="chart-info"></div>
   </div>
 
   <script>
+    /* ════════════════════════════════════════════
+       Gemeinsame Daten (geteilt zwischen Tab 2+3)
+    ════════════════════════════════════════════ */
+    let daxDaten = null;   // vollständiger Datensatz (älteste zuerst)
+    let aktiveTage = 365;  // aktuell ausgewählter Zeitraum
+
     /* ── Tab-Steuerung ── */
     function zeigeTab(name, btn) {
       document.querySelectorAll(".panel").forEach(p => p.classList.remove("aktiv"));
       document.querySelectorAll(".tab").forEach(t => t.classList.remove("aktiv"));
       document.getElementById("panel-" + name).classList.add("aktiv");
       btn.classList.add("aktiv");
+      if (name === "chart" && daxDaten) zeichneChart(daxDaten, aktiveTage);
     }
 
-    /* ── Zufallstext ── */
+    /* ════════════════════════════════════════════
+       Zufallstext
+    ════════════════════════════════════════════ */
     const FARBEN = ["#ff6b6b","#6bff8e","#ffd93d","#6bb5ff","#d06bff","#6bffff"];
     const ZEICHEN = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 !?#@";
 
-    function zufallstext(laenge = 35) {
-      return Array.from({ length: laenge }, () =>
-        ZEICHEN[Math.floor(Math.random() * ZEICHEN.length)]
-      ).join("");
+    function zufallstext(l=35) {
+      return Array.from({length:l}, () => ZEICHEN[Math.floor(Math.random()*ZEICHEN.length)]).join("");
     }
-
     function generieren() {
-      const anzahl = parseInt(document.getElementById("anzahl").value, 10);
-      if (isNaN(anzahl) || anzahl < 1) return;
-      const output = document.getElementById("output");
-      output.innerHTML = "";
-      for (let i = 0; i < anzahl; i++) {
-        const zeile = document.createElement("div");
-        zeile.style.color = FARBEN[i % FARBEN.length];
-        zeile.textContent = zufallstext();
-        output.appendChild(zeile);
+      const n = parseInt(document.getElementById("anzahl").value,10);
+      if (isNaN(n)||n<1) return;
+      const out = document.getElementById("output");
+      out.innerHTML = "";
+      for (let i=0;i<n;i++) {
+        const d = document.createElement("div");
+        d.style.color = FARBEN[i % FARBEN.length];
+        d.textContent = zufallstext();
+        out.appendChild(d);
       }
-      document.getElementById("counter").textContent =
-        `${anzahl} Zeile${anzahl !== 1 ? "n" : ""} generiert`;
+      document.getElementById("counter").textContent = `${n} Zeile${n!==1?"n":""} generiert`;
     }
-
     function leeren() {
-      document.getElementById("output").innerHTML =
-        '<span class="leer">← Anzahl eingeben und auf Generieren klicken</span>';
+      document.getElementById("output").innerHTML = '<span class="leer">← Anzahl eingeben und auf Generieren klicken</span>';
       document.getElementById("counter").textContent = "";
     }
+    document.getElementById("anzahl").addEventListener("keydown", e => { if(e.key==="Enter") generieren(); });
 
-    document.getElementById("anzahl").addEventListener("keydown", e => {
-      if (e.key === "Enter") generieren();
-    });
+    /* ════════════════════════════════════════════
+       Daten laden (gemeinsam für Tabelle + Chart)
+    ════════════════════════════════════════════ */
+    async function holeDaten() {
+      const res = await fetch("dax_data.json");
+      if (!res.ok) throw new Error(`HTTP ${res.status} — Datei nicht gefunden`);
+      const raw = await res.json();
+      if (!raw.length) throw new Error("Datei ist leer — fetch_dax.py erneut ausführen");
+      // JSON kommt neueste zuerst → umkehren für Chart (älteste zuerst)
+      return raw.slice().reverse();
+    }
 
-    /* ── DAX-Kurse ── */
+    /* ════════════════════════════════════════════
+       DAX-Tabelle
+    ════════════════════════════════════════════ */
     async function ladeDax() {
       const status = document.getElementById("dax-status");
       const tbody  = document.getElementById("dax-tbody");
       const info   = document.getElementById("dax-info");
-
-      status.className = "";
+      status.className = "dax-status";
       status.textContent = "Lade dax_data.json …";
       tbody.innerHTML = '<tr><td colspan="2" class="kein-daten">Lädt …</td></tr>';
-      info.textContent = "";
-
       try {
-        // dax_data.json wird von fetch_dax.py erzeugt und liegt im selben Ordner
-        const res = await fetch("dax_data.json");
-        if (!res.ok) throw new Error(`HTTP ${res.status} — Datei nicht gefunden`);
-        const daten = await res.json();
-
-        if (!daten.length) {
-          throw new Error("Datei ist leer — fetch_dax.py erneut ausführen");
-        }
-
-        // Tabelle befüllen
-        tbody.innerHTML = daten.map(d => `
+        const daten = await holeDaten();
+        daxDaten = daten;
+        // Tabelle neueste zuerst anzeigen
+        const anzeige = daten.slice().reverse();
+        tbody.innerHTML = anzeige.map(d => `
           <tr>
             <td>${d.datum}</td>
-            <td class="kurs">${d.eroeffnung.toLocaleString("de-DE", { minimumFractionDigits: 2 })}</td>
-          </tr>
-        `).join("");
-
-        status.className = "ok";
+            <td class="kurs">${d.eroeffnung.toLocaleString("de-DE",{minimumFractionDigits:2})}</td>
+          </tr>`).join("");
+        status.className = "dax-status ok";
         status.textContent = `✓ ${daten.length} Handelstage geladen`;
-        info.textContent =
-          `Zeitraum: ${daten.at(-1).datum} → ${daten[0].datum}`;
-
-      } catch (err) {
-        status.className = "fehler";
+        info.textContent = `Zeitraum: ${daten[0].datum} → ${daten.at(-1).datum}`;
+      } catch(err) {
+        status.className = "dax-status fehler";
         status.textContent = `✗ Fehler: ${err.message}`;
-        tbody.innerHTML = `<tr><td colspan="2" class="kein-daten">
-          Bitte zuerst fetch_dax.py ausführen:<br>
-          <code>python fetch_dax.py</code>
-        </td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="2" class="kein-daten">Bitte zuerst <code>python fetch_dax.py</code> ausführen</td></tr>`;
       }
     }
+
+    /* ════════════════════════════════════════════
+       DAX-Chart
+    ════════════════════════════════════════════ */
+    async function ladeChart() {
+      const status = document.getElementById("chart-status");
+      status.className = "dax-status";
+      status.textContent = "Lade dax_data.json …";
+      try {
+        const daten = await holeDaten();
+        daxDaten = daten;
+        status.className = "dax-status ok";
+        status.textContent = `✓ ${daten.length} Handelstage geladen`;
+        document.getElementById("range-buttons").style.display = "flex";
+        zeichneChart(daten, aktiveTage);
+      } catch(err) {
+        status.className = "dax-status fehler";
+        status.textContent = `✗ Fehler: ${err.message}`;
+      }
+    }
+
+    function setRange(tage, btn) {
+      aktiveTage = tage;
+      document.querySelectorAll(".range-btn").forEach(b => b.classList.remove("aktiv"));
+      btn.classList.add("aktiv");
+      if (daxDaten) zeichneChart(daxDaten, tage);
+    }
+
+    /* ── Datum "DD.MM.YYYY" → Date-Objekt ── */
+    function parseDE(s) {
+      const [d,m,y] = s.split(".");
+      return new Date(+y, +m-1, +d);
+    }
+
+    function zeichneChart(alle, tage) {
+      /* Zeitraum filtern */
+      const daten = tage === 0 ? alle
+        : alle.filter(d => {
+            const diff = (parseDE(alle.at(-1).datum) - parseDE(d.datum)) / 86400000;
+            return diff <= tage;
+          });
+
+      const svg   = document.getElementById("chart-svg");
+      const leer  = document.getElementById("chart-leer");
+      const wrap  = document.getElementById("chart-wrap");
+
+      leer.style.display = "none";
+      svg.style.display  = "block";
+
+      /* Dimensionen */
+      const W  = wrap.clientWidth - 24;  // padding
+      const H  = 340;
+      const ML = 72, MR = 16, MT = 16, MB = 40;
+      const CW = W - ML - MR;
+      const CH = H - MT - MB;
+
+      svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+      svg.setAttribute("height", H);
+
+      /* Clip-Rect */
+      const cr = document.getElementById("clipRect");
+      cr.setAttribute("x", ML); cr.setAttribute("y", MT);
+      cr.setAttribute("width", CW); cr.setAttribute("height", CH);
+
+      /* Skalen */
+      const xs = daten.map((_,i) => ML + (i/(daten.length-1||1))*CW);
+      const vals = daten.map(d => d.eroeffnung);
+      const vMin = Math.min(...vals);
+      const vMax = Math.max(...vals);
+      const pad  = (vMax - vMin) * 0.05 || 1;
+      const yMin = vMin - pad;
+      const yMax = vMax + pad;
+      const yS   = v => MT + CH - ((v - yMin)/(yMax - yMin)) * CH;
+
+      /* ── Grid + Y-Achse ── */
+      const grid  = document.getElementById("grid");
+      const yAxis = document.getElementById("y-axis");
+      grid.innerHTML = ""; yAxis.innerHTML = "";
+      const TICKS = 5;
+      for (let i=0; i<=TICKS; i++) {
+        const v = yMin + (yMax - yMin) * (i/TICKS);
+        const y = yS(v);
+        grid.innerHTML += `<line x1="${ML}" x2="${ML+CW}" y1="${y}" y2="${y}"
+          stroke="#1e1e1e" stroke-width="1"/>`;
+        yAxis.innerHTML += `<text x="${ML-8}" y="${y+4}" text-anchor="end"
+          fill="#555" font-size="11" font-family="Courier New,monospace">
+          ${Math.round(v).toLocaleString("de-DE")}</text>`;
+      }
+
+      /* ── X-Achse (Monats-Labels) ── */
+      const xAxis = document.getElementById("x-axis");
+      xAxis.innerHTML = "";
+      const gesehen = new Set();
+      daten.forEach((d, i) => {
+        const dt = parseDE(d.datum);
+        const key = `${dt.getFullYear()}-${dt.getMonth()}`;
+        if (!gesehen.has(key)) {
+          gesehen.add(key);
+          const label = dt.toLocaleDateString("de-DE", {month:"short", year:"2-digit"});
+          xAxis.innerHTML += `<text x="${xs[i]}" y="${MT+CH+22}" text-anchor="middle"
+            fill="#555" font-size="10" font-family="Courier New,monospace">${label}</text>
+            <line x1="${xs[i]}" x2="${xs[i]}" y1="${MT+CH}" y2="${MT+CH+5}" stroke="#333"/>`;
+        }
+      });
+
+      /* ── Linienpfad ── */
+      const pts = daten.map((d,i) => `${xs[i]},${yS(d.eroeffnung)}`);
+      document.getElementById("line-path").setAttribute("d", "M" + pts.join("L"));
+
+      /* ── Area-Pfad ── */
+      const base = MT + CH;
+      document.getElementById("area-path").setAttribute("d",
+        `M${xs[0]},${base} L` + pts.join("L") + ` L${xs.at(-1)},${base} Z`);
+
+      /* ── Hit-Area für Tooltip ── */
+      const hit = document.getElementById("hit-area");
+      hit.setAttribute("x", ML); hit.setAttribute("y", MT);
+      hit.setAttribute("width", CW); hit.setAttribute("height", CH);
+
+      const cl = document.getElementById("crosshair-line");
+      const cd = document.getElementById("crosshair-dot");
+      const tt = document.getElementById("tooltip");
+
+      hit.onmousemove = (e) => {
+        const rect = svg.getBoundingClientRect();
+        const mx   = (e.clientX - rect.left) * (W / rect.width);
+        // Nächsten Datenpunkt finden
+        const idx  = Math.round((mx - ML) / CW * (daten.length-1));
+        const i    = Math.max(0, Math.min(daten.length-1, idx));
+        const px   = xs[i];
+        const py   = yS(daten[i].eroeffnung);
+
+        cl.setAttribute("x1", px); cl.setAttribute("x2", px);
+        cl.setAttribute("y1", MT); cl.setAttribute("y2", MT+CH);
+        cl.style.display = "block";
+        cd.setAttribute("cx", px); cd.setAttribute("cy", py);
+        cd.style.display = "block";
+
+        // Tooltip positionieren (innerhalb wrap)
+        const wRect = wrap.getBoundingClientRect();
+        let tx = e.clientX - wRect.left + 14;
+        let ty = e.clientY - wRect.top  - 10;
+        tt.style.display = "block";
+        // Verhindert, dass Tooltip rechts rausfällt
+        if (tx + 140 > wRect.width) tx = e.clientX - wRect.left - 150;
+        tt.style.left = tx + "px";
+        tt.style.top  = ty + "px";
+        document.getElementById("tt-datum").textContent = daten[i].datum;
+        document.getElementById("tt-kurs").textContent  =
+          daten[i].eroeffnung.toLocaleString("de-DE",{minimumFractionDigits:2}) + " Pkt.";
+      };
+      hit.onmouseleave = () => {
+        cl.style.display = cd.style.display = tt.style.display = "none";
+      };
+
+      /* Info-Zeile */
+      const delta = daten.at(-1).eroeffnung - daten[0].eroeffnung;
+      const pct   = (delta / daten[0].eroeffnung * 100).toFixed(1);
+      const sign  = delta >= 0 ? "+" : "";
+      document.getElementById("chart-info").innerHTML =
+        `${daten[0].datum} → ${daten.at(-1).datum} &nbsp;|&nbsp; ` +
+        `<span style="color:${delta>=0?'#6bff8e':'#ff6b6b'}">${sign}${pct}%</span>`;
+    }
+
+    /* Neuzeichnen bei Fenstergröße-Änderung */
+    window.addEventListener("resize", () => {
+      if (daxDaten && document.getElementById("panel-chart").classList.contains("aktiv"))
+        zeichneChart(daxDaten, aktiveTage);
+    });
   </script>
 
 </body>

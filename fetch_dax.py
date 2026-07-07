@@ -7,7 +7,7 @@ ticker = yf.Ticker("^GDAXI")
 
 # Historische Daten für den Zeitraum aus der URL abrufen
 # (2025-07-01 bis 2026-07-01, entspricht den Timestamps in der URL)
-hist = ticker.history(start="2024-07-01", end="2026-07-01")
+hist = ticker.history(start="2023-07-01", end="2026-07-01")
 
 if hist.empty:
     print("Keine Daten gefunden.")
