@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Zufallstext &amp; DAX-Kurse</title>
+  <title>DAX-Kurse</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -47,15 +47,7 @@
     .panel { display: none; width: 100%; max-width: 720px; }
     .panel.aktiv { display: block; }
 
-    /* ── Zufallstext ── */
-    .controls { display: flex; gap: 0.75rem; margin-bottom: 1.5rem; align-items: center; }
-    label { color: #888; font-size: 0.9rem; }
-    input[type="number"] {
-      width: 80px; background: #1a1a1a; border: 1px solid #333; border-radius: 4px;
-      color: #e0e0e0; font-family: inherit; font-size: 1rem;
-      padding: 0.4rem 0.6rem; text-align: center; outline: none;
-    }
-    input[type="number"]:focus { border-color: #555; }
+    /* ── Gemeinsame Controls ── */
     button {
       background: #1e1e1e; border: 1px solid #444; border-radius: 4px;
       color: #ccc; cursor: pointer; font-family: inherit; font-size: 0.9rem;
@@ -63,12 +55,22 @@
     }
     button:hover { background: #2a2a2a; border-color: #666; }
     button:active { background: #333; }
-    #output {
-      background: #111; border: 1px solid #222; border-radius: 6px;
-      padding: 1rem 1.2rem; min-height: 120px; font-size: 0.95rem; line-height: 1.9;
+
+    /* ── Ladeleiste (Zeitraum wählen) ── */
+    .ladeleiste {
+      display: flex; flex-wrap: wrap; gap: 0.6rem; align-items: center;
+      width: 100%; max-width: 720px; margin-bottom: 1.2rem;
+      padding: 0.9rem 1rem; background: #111; border: 1px solid #222; border-radius: 6px;
     }
-    .leer { color: #333; font-style: italic; }
-    #counter { margin-top: 0.75rem; font-size: 0.75rem; color: #444; }
+    .ladeleiste label { color: #888; font-size: 0.82rem; }
+    input[type="date"] {
+      background: #1a1a1a; border: 1px solid #333; border-radius: 4px;
+      color: #e0e0e0; font-family: inherit; font-size: 0.85rem;
+      padding: 0.35rem 0.5rem; outline: none; color-scheme: dark;
+    }
+    input[type="date"]:focus { border-color: #6bffff; }
+    .ladeleiste .lade-btn { border-color: #6bffff; color: #6bffff; }
+    .ladeleiste .lade-btn:hover { background: #0d1f1f; }
 
     /* ── DAX-Tabelle ── */
     .dax-controls { display: flex; gap: 0.75rem; margin-bottom: 1rem; align-items: center; }
@@ -99,7 +101,6 @@
     }
     #chart-svg { display: block; width: 100%; overflow: visible; }
 
-    /* Tooltip */
     #tooltip {
       position: absolute;
       background: #1e1e1e;
@@ -115,75 +116,54 @@
     #tooltip .tt-datum { color: #888; margin-bottom: 0.1rem; }
     #tooltip .tt-kurs  { color: #6bffff; font-size: 0.9rem; }
 
-    /* Crosshair */
-    #crosshair-line {
-      stroke: #444;
-      stroke-width: 1;
-      stroke-dasharray: 4 3;
-      pointer-events: none;
-      display: none;
-    }
-    #crosshair-dot {
-      fill: #0d0d0d;
-      stroke: #6bffff;
-      stroke-width: 2;
-      pointer-events: none;
-      display: none;
-    }
+    #crosshair-line { stroke: #444; stroke-width: 1; stroke-dasharray: 4 3; pointer-events: none; display: none; }
+    #crosshair-dot  { fill: #0d0d0d; stroke: #6bffff; stroke-width: 2; pointer-events: none; display: none; }
 
-    /* Range-Filter */
-    .chart-controls {
-      display: flex;
-      gap: 0.4rem;
-      margin-bottom: 1rem;
-      align-items: center;
-    }
+    .chart-controls { display: flex; gap: 0.4rem; margin-bottom: 1rem; align-items: center; }
     .range-btn {
-      padding: 0.25rem 0.65rem;
-      font-size: 0.78rem;
-      border-radius: 3px;
-      border: 1px solid #333;
-      background: #1a1a1a;
-      color: #666;
-      cursor: pointer;
-      font-family: inherit;
-      transition: color 0.1s, border-color 0.1s;
+      padding: 0.25rem 0.65rem; font-size: 0.78rem; border-radius: 3px;
+      border: 1px solid #333; background: #1a1a1a; color: #666;
+      cursor: pointer; font-family: inherit; transition: color 0.1s, border-color 0.1s;
     }
     .range-btn:hover { color: #aaa; border-color: #555; }
     .range-btn.aktiv { color: #6bffff; border-color: #6bffff; background: #0d1f1f; }
     .chart-info { margin-top: 0.6rem; font-size: 0.75rem; color: #444; }
     .chart-leer { text-align: center; padding: 4rem; color: #333; font-style: italic; }
+
+    /* Bollinger: Umschalter + Legende */
+    .bb-toggle {
+      display: flex; align-items: center; gap: 0.35rem;
+      margin-left: auto; font-size: 0.78rem; color: #888; cursor: pointer;
+    }
+    .bb-toggle input { accent-color: #a78bfa; cursor: pointer; }
+    .legende { display: flex; gap: 1.2rem; margin-bottom: 0.8rem; font-size: 0.75rem; color: #888; }
+    .legende span { display: inline-flex; align-items: center; gap: 0.4rem; }
+    .swatch { width: 14px; height: 3px; border-radius: 2px; display: inline-block; }
+    .bb-legend.aus { opacity: 0.3; }
   </style>
 </head>
 <body>
 
-  <h1>// Python-Demo</h1>
-  <p class="subtitle">Zufallstext-Generator &amp; DAX-Kurse</p>
+  <h1>// DAX-Kurse</h1>
+  <p class="subtitle">Historische Eröffnungskurse des DAX</p>
+
+  <!-- Gemeinsame Ladeleiste: Zeitraum wählen und direkt von Yahoo Finance laden -->
+  <div class="ladeleiste">
+    <label for="von">Von</label>
+    <input type="date" id="von" value="2023-07-01">
+    <label for="bis">Bis</label>
+    <input type="date" id="bis" value="2026-07-01">
+    <button class="lade-btn" onclick="ladeDaten()">Daten laden</button>
+    <span id="lade-status" class="dax-status" style="margin:0">Noch keine Daten geladen.</span>
+  </div>
 
   <div class="tabs">
-    <button class="tab aktiv" onclick="zeigeTab('zufall', this)">Zufallstext</button>
-    <button class="tab" onclick="zeigeTab('dax', this)">DAX-Tabelle</button>
-    <button class="tab" onclick="zeigeTab('chart', this)">DAX-Chart</button>
+    <button class="tab aktiv" onclick="zeigeTab('dax', this)">Tabelle</button>
+    <button class="tab" onclick="zeigeTab('chart', this)">Chart</button>
   </div>
 
-  <!-- Panel 1: Zufallstext -->
-  <div id="panel-zufall" class="panel aktiv">
-    <div class="controls">
-      <label for="anzahl">Anzahl:</label>
-      <input type="number" id="anzahl" min="1" max="200" value="5">
-      <button onclick="generieren()">Generieren</button>
-      <button onclick="leeren()">Leeren</button>
-    </div>
-    <div id="output"><span class="leer">← Anzahl eingeben und auf Generieren klicken</span></div>
-    <div id="counter"></div>
-  </div>
-
-  <!-- Panel 2: DAX-Tabelle -->
-  <div id="panel-dax" class="panel">
-    <div class="dax-controls">
-      <button onclick="ladeDax()">Daten laden</button>
-    </div>
-    <div id="dax-status" class="dax-status">Noch keine Daten geladen.</div>
+  <!-- Panel 1: DAX-Tabelle -->
+  <div id="panel-dax" class="panel aktiv">
     <div class="tabelle-wrapper">
       <table>
         <thead><tr><th>Datum</th><th style="text-align:right">Eröffnung (Punkte)</th></tr></thead>
@@ -195,19 +175,23 @@
     <div id="dax-info" class="dax-info"></div>
   </div>
 
-  <!-- Panel 3: DAX-Chart -->
+  <!-- Panel 2: DAX-Chart -->
   <div id="panel-chart" class="panel">
-    <div class="dax-controls">
-      <button onclick="ladeChart()">Daten laden</button>
-    </div>
-    <div id="chart-status" class="dax-status">Noch keine Daten geladen.</div>
-
     <div class="chart-controls" id="range-buttons" style="display:none">
       <span style="color:#555;font-size:0.78rem">Zeitraum:</span>
       <button class="range-btn" onclick="setRange(90,this)">3 M</button>
       <button class="range-btn" onclick="setRange(180,this)">6 M</button>
       <button class="range-btn aktiv" onclick="setRange(365,this)">1 J</button>
       <button class="range-btn" onclick="setRange(0,this)">Gesamt</button>
+      <label class="bb-toggle">
+        <input type="checkbox" id="bb-check" checked onchange="if(daxDaten)zeichneChart(daxDaten,aktiveTage)">
+        Bollinger (20, 2σ)
+      </label>
+    </div>
+
+    <div class="legende" id="legende">
+      <span><span class="swatch" style="background:#6bffff"></span>Kurs</span>
+      <span class="bb-legend"><span class="swatch" style="background:#a78bfa"></span>Bollinger-Bänder</span>
     </div>
 
     <div id="chart-wrap">
@@ -220,17 +204,17 @@
           </linearGradient>
           <clipPath id="chartClip"><rect id="clipRect"/></clipPath>
         </defs>
-        <!-- Grid lines -->
         <g id="grid"></g>
-        <!-- Area fill -->
         <path id="area-path" fill="url(#areaGrad)" clip-path="url(#chartClip)"/>
-        <!-- Line -->
+        <!-- Bollinger-Bänder (zwischen Kursfläche und Kurslinie) -->
+        <path id="bb-fill"  fill="#a78bfa" fill-opacity="0.10" clip-path="url(#chartClip)"/>
+        <path id="bb-upper" fill="none" stroke="#a78bfa" stroke-width="1" stroke-dasharray="4 3" clip-path="url(#chartClip)"/>
+        <path id="bb-lower" fill="none" stroke="#a78bfa" stroke-width="1" stroke-dasharray="4 3" clip-path="url(#chartClip)"/>
+        <path id="bb-mid"   fill="none" stroke="#a78bfa" stroke-width="1" clip-path="url(#chartClip)"/>
         <path id="line-path" fill="none" stroke="#6bffff" stroke-width="1.5"
               stroke-linejoin="round" stroke-linecap="round" clip-path="url(#chartClip)"/>
-        <!-- Axes -->
         <g id="x-axis"></g>
         <g id="y-axis"></g>
-        <!-- Interactive overlay -->
         <line id="crosshair-line"/>
         <circle id="crosshair-dot" r="4"/>
         <rect id="hit-area" fill="transparent" style="cursor:crosshair"/>
@@ -244,11 +228,8 @@
   </div>
 
   <script>
-    /* ════════════════════════════════════════════
-       Gemeinsame Daten (geteilt zwischen Tab 2+3)
-    ════════════════════════════════════════════ */
-    let daxDaten = null;   // vollständiger Datensatz (älteste zuerst)
-    let aktiveTage = 365;  // aktuell ausgewählter Zeitraum
+    let daxDaten  = null;
+    let aktiveTage = 365;
 
     /* ── Tab-Steuerung ── */
     function zeigeTab(name, btn) {
@@ -259,94 +240,58 @@
       if (name === "chart" && daxDaten) zeichneChart(daxDaten, aktiveTage);
     }
 
-    /* ════════════════════════════════════════════
-       Zufallstext
-    ════════════════════════════════════════════ */
-    const FARBEN = ["#ff6b6b","#6bff8e","#ffd93d","#6bb5ff","#d06bff","#6bffff"];
-    const ZEICHEN = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 !?#@";
+    /* ── Daten laden (über die API, Zeitraum aus der Ladeleiste) ── */
+    async function ladeDaten() {
+      const status = document.getElementById("lade-status");
+      const von = document.getElementById("von").value;
+      const bis = document.getElementById("bis").value;
 
-    function zufallstext(l=35) {
-      return Array.from({length:l}, () => ZEICHEN[Math.floor(Math.random()*ZEICHEN.length)]).join("");
-    }
-    function generieren() {
-      const n = parseInt(document.getElementById("anzahl").value,10);
-      if (isNaN(n)||n<1) return;
-      const out = document.getElementById("output");
-      out.innerHTML = "";
-      for (let i=0;i<n;i++) {
-        const d = document.createElement("div");
-        d.style.color = FARBEN[i % FARBEN.length];
-        d.textContent = zufallstext();
-        out.appendChild(d);
-      }
-      document.getElementById("counter").textContent = `${n} Zeile${n!==1?"n":""} generiert`;
-    }
-    function leeren() {
-      document.getElementById("output").innerHTML = '<span class="leer">← Anzahl eingeben und auf Generieren klicken</span>';
-      document.getElementById("counter").textContent = "";
-    }
-    document.getElementById("anzahl").addEventListener("keydown", e => { if(e.key==="Enter") generieren(); });
-
-    /* ════════════════════════════════════════════
-       Daten laden (gemeinsam für Tabelle + Chart)
-    ════════════════════════════════════════════ */
-    async function holeDaten() {
-      const res = await fetch("dax_data.json");
-      if (!res.ok) throw new Error(`HTTP ${res.status} — Datei nicht gefunden`);
-      const raw = await res.json();
-      if (!raw.length) throw new Error("Datei ist leer — fetch_dax.py erneut ausführen");
-      // JSON kommt neueste zuerst → umkehren für Chart (älteste zuerst)
-      return raw.slice().reverse();
-    }
-
-    /* ════════════════════════════════════════════
-       DAX-Tabelle
-    ════════════════════════════════════════════ */
-    async function ladeDax() {
-      const status = document.getElementById("dax-status");
-      const tbody  = document.getElementById("dax-tbody");
-      const info   = document.getElementById("dax-info");
-      status.className = "dax-status";
-      status.textContent = "Lade dax_data.json …";
-      tbody.innerHTML = '<tr><td colspan="2" class="kein-daten">Lädt …</td></tr>';
-      try {
-        const daten = await holeDaten();
-        daxDaten = daten;
-        // Tabelle neueste zuerst anzeigen
-        const anzeige = daten.slice().reverse();
-        tbody.innerHTML = anzeige.map(d => `
-          <tr>
-            <td>${d.datum}</td>
-            <td class="kurs">${d.eroeffnung.toLocaleString("de-DE",{minimumFractionDigits:2})}</td>
-          </tr>`).join("");
-        status.className = "dax-status ok";
-        status.textContent = `✓ ${daten.length} Handelstage geladen`;
-        info.textContent = `Zeitraum: ${daten[0].datum} → ${daten.at(-1).datum}`;
-      } catch(err) {
+      if (!von || !bis) {
         status.className = "dax-status fehler";
-        status.textContent = `✗ Fehler: ${err.message}`;
-        tbody.innerHTML = `<tr><td colspan="2" class="kein-daten">Bitte zuerst <code>python fetch_dax.py</code> ausführen</td></tr>`;
+        status.textContent = "✗ Bitte Von- und Bis-Datum wählen.";
+        return;
       }
-    }
+      if (von >= bis) {
+        status.className = "dax-status fehler";
+        status.textContent = "✗ Das Von-Datum muss vor dem Bis-Datum liegen.";
+        return;
+      }
 
-    /* ════════════════════════════════════════════
-       DAX-Chart
-    ════════════════════════════════════════════ */
-    async function ladeChart() {
-      const status = document.getElementById("chart-status");
       status.className = "dax-status";
-      status.textContent = "Lade dax_data.json …";
+      status.textContent = "Lade von Yahoo Finance …";
+
       try {
-        const daten = await holeDaten();
-        daxDaten = daten;
+        const res = await fetch(`/api/dax?start=${von}&end=${bis}`);
+        const daten = await res.json();
+        if (!res.ok) throw new Error(daten.fehler || `HTTP ${res.status}`);
+        if (!daten.length) throw new Error("Keine Daten für diesen Zeitraum.");
+
+        // Nach Datum aufsteigend sortieren (älteste zuerst) — damit das Chart
+        // von links (alt) nach rechts (neu) läuft, unabhängig von der API-Reihenfolge.
+        daxDaten = daten.slice().sort((a, b) => parseDE(a.datum) - parseDE(b.datum));
+
         status.className = "dax-status ok";
-        status.textContent = `✓ ${daten.length} Handelstage geladen`;
+        status.textContent = `✓ ${daxDaten.length} Handelstage geladen`;
+
+        // Beide Ansichten aktualisieren
+        zeigeTabelle(daxDaten);
         document.getElementById("range-buttons").style.display = "flex";
-        zeichneChart(daten, aktiveTage);
+        zeichneChart(daxDaten, aktiveTage);
       } catch(err) {
         status.className = "dax-status fehler";
         status.textContent = `✗ Fehler: ${err.message}`;
       }
+    }
+
+    /* ── DAX-Tabelle füllen (neueste zuerst) ── */
+    function zeigeTabelle(daten) {
+      document.getElementById("dax-tbody").innerHTML = daten.slice().reverse().map(d => `
+        <tr>
+          <td>${d.datum}</td>
+          <td class="kurs">${d.eroeffnung.toLocaleString("de-DE",{minimumFractionDigits:2})}</td>
+        </tr>`).join("");
+      document.getElementById("dax-info").textContent =
+        `Zeitraum: ${daten[0].datum} → ${daten.at(-1).datum}`;
     }
 
     function setRange(tage, btn) {
@@ -356,29 +301,42 @@
       if (daxDaten) zeichneChart(daxDaten, tage);
     }
 
-    /* ── Datum "DD.MM.YYYY" → Date-Objekt ── */
     function parseDE(s) {
       const [d,m,y] = s.split(".");
       return new Date(+y, +m-1, +d);
     }
 
+    /* ── Bollinger-Bänder ──
+       mitte = gleitender Mittelwert (SMA) über 'periode' Werte
+       oben/unten = mitte ± k · Standardabweichung (Population, gleiches Fenster)
+       Die ersten (periode-1) Werte bleiben null, da das Fenster noch nicht voll ist. */
+    function berechneBollinger(vals, periode, k) {
+      const mitte = [], oben = [], unten = [];
+      for (let i = 0; i < vals.length; i++) {
+        if (i < periode - 1) { mitte.push(null); oben.push(null); unten.push(null); continue; }
+        const fenster = vals.slice(i - periode + 1, i + 1);
+        const m  = fenster.reduce((a, b) => a + b, 0) / periode;
+        const sd = Math.sqrt(fenster.reduce((a, b) => a + (b - m) ** 2, 0) / periode);
+        mitte.push(m); oben.push(m + k * sd); unten.push(m - k * sd);
+      }
+      return { mitte, oben, unten };
+    }
+
     function zeichneChart(alle, tage) {
-      /* Zeitraum filtern */
       const daten = tage === 0 ? alle
         : alle.filter(d => {
             const diff = (parseDE(alle.at(-1).datum) - parseDE(d.datum)) / 86400000;
             return diff <= tage;
           });
 
-      const svg   = document.getElementById("chart-svg");
-      const leer  = document.getElementById("chart-leer");
-      const wrap  = document.getElementById("chart-wrap");
+      const svg  = document.getElementById("chart-svg");
+      const leer = document.getElementById("chart-leer");
+      const wrap = document.getElementById("chart-wrap");
 
       leer.style.display = "none";
       svg.style.display  = "block";
 
-      /* Dimensionen */
-      const W  = wrap.clientWidth - 24;  // padding
+      const W  = wrap.clientWidth - 24;
       const H  = 340;
       const ML = 72, MR = 16, MT = 16, MB = 40;
       const CW = W - ML - MR;
@@ -387,62 +345,81 @@
       svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
       svg.setAttribute("height", H);
 
-      /* Clip-Rect */
       const cr = document.getElementById("clipRect");
       cr.setAttribute("x", ML); cr.setAttribute("y", MT);
       cr.setAttribute("width", CW); cr.setAttribute("height", CH);
 
-      /* Skalen */
-      const xs = daten.map((_,i) => ML + (i/(daten.length-1||1))*CW);
+      const xs   = daten.map((_,i) => ML + (i/(daten.length-1||1))*CW);
       const vals = daten.map(d => d.eroeffnung);
-      const vMin = Math.min(...vals);
-      const vMax = Math.max(...vals);
+
+      // ── Bollinger-Bänder berechnen (SMA über PERIODE, ±K·Standardabweichung) ──
+      const PERIODE = 20, K = 2;
+      const bbAn = document.getElementById("bb-check").checked && daten.length >= PERIODE;
+      const bb = berechneBollinger(vals, PERIODE, K);
+
+      // Y-Bereich: bei aktiven Bändern auch deren Werte einbeziehen,
+      // damit oberes/unteres Band nicht abgeschnitten werden.
+      let alleWerte = vals.slice();
+      if (bbAn) alleWerte = alleWerte.concat(bb.oben.filter(v => v != null), bb.unten.filter(v => v != null));
+      const vMin = Math.min(...alleWerte), vMax = Math.max(...alleWerte);
       const pad  = (vMax - vMin) * 0.05 || 1;
-      const yMin = vMin - pad;
-      const yMax = vMax + pad;
+      const yMin = vMin - pad, yMax = vMax + pad;
       const yS   = v => MT + CH - ((v - yMin)/(yMax - yMin)) * CH;
 
-      /* ── Grid + Y-Achse ── */
       const grid  = document.getElementById("grid");
       const yAxis = document.getElementById("y-axis");
       grid.innerHTML = ""; yAxis.innerHTML = "";
-      const TICKS = 5;
-      for (let i=0; i<=TICKS; i++) {
-        const v = yMin + (yMax - yMin) * (i/TICKS);
+      for (let i=0; i<=5; i++) {
+        const v = yMin + (yMax - yMin) * (i/5);
         const y = yS(v);
-        grid.innerHTML += `<line x1="${ML}" x2="${ML+CW}" y1="${y}" y2="${y}"
-          stroke="#1e1e1e" stroke-width="1"/>`;
-        yAxis.innerHTML += `<text x="${ML-8}" y="${y+4}" text-anchor="end"
-          fill="#555" font-size="11" font-family="Courier New,monospace">
-          ${Math.round(v).toLocaleString("de-DE")}</text>`;
+        grid.innerHTML  += `<line x1="${ML}" x2="${ML+CW}" y1="${y}" y2="${y}" stroke="#1e1e1e" stroke-width="1"/>`;
+        yAxis.innerHTML += `<text x="${ML-8}" y="${y+4}" text-anchor="end" fill="#555" font-size="11" font-family="Courier New,monospace">${Math.round(v).toLocaleString("de-DE")}</text>`;
       }
 
-      /* ── X-Achse (Monats-Labels) ── */
       const xAxis = document.getElementById("x-axis");
       xAxis.innerHTML = "";
       const gesehen = new Set();
-      daten.forEach((d, i) => {
-        const dt = parseDE(d.datum);
+      daten.forEach((d,i) => {
+        const dt  = parseDE(d.datum);
         const key = `${dt.getFullYear()}-${dt.getMonth()}`;
         if (!gesehen.has(key)) {
           gesehen.add(key);
-          const label = dt.toLocaleDateString("de-DE", {month:"short", year:"2-digit"});
-          xAxis.innerHTML += `<text x="${xs[i]}" y="${MT+CH+22}" text-anchor="middle"
-            fill="#555" font-size="10" font-family="Courier New,monospace">${label}</text>
-            <line x1="${xs[i]}" x2="${xs[i]}" y1="${MT+CH}" y2="${MT+CH+5}" stroke="#333"/>`;
+          const label = dt.toLocaleDateString("de-DE",{month:"short",year:"2-digit"});
+          xAxis.innerHTML +=
+            `<text x="${xs[i]}" y="${MT+CH+22}" text-anchor="middle" fill="#555" font-size="10" font-family="Courier New,monospace">${label}</text>
+             <line x1="${xs[i]}" x2="${xs[i]}" y1="${MT+CH}" y2="${MT+CH+5}" stroke="#333"/>`;
         }
       });
 
-      /* ── Linienpfad ── */
       const pts = daten.map((d,i) => `${xs[i]},${yS(d.eroeffnung)}`);
       document.getElementById("line-path").setAttribute("d", "M" + pts.join("L"));
-
-      /* ── Area-Pfad ── */
-      const base = MT + CH;
       document.getElementById("area-path").setAttribute("d",
-        `M${xs[0]},${base} L` + pts.join("L") + ` L${xs.at(-1)},${base} Z`);
+        `M${xs[0]},${MT+CH} L` + pts.join("L") + ` L${xs.at(-1)},${MT+CH} Z`);
 
-      /* ── Hit-Area für Tooltip ── */
+      // ── Bollinger-Bänder zeichnen ──
+      const bbFill  = document.getElementById("bb-fill");
+      const bbOben  = document.getElementById("bb-upper");
+      const bbUnten = document.getElementById("bb-lower");
+      const bbMitte = document.getElementById("bb-mid");
+      if (bbAn) {
+        // nur Punkte ab Index PERIODE-1 haben gültige Bandwerte
+        const idx    = [];
+        for (let i = 0; i < daten.length; i++) if (bb.mitte[i] != null) idx.push(i);
+        const linie  = (arr) => "M" + idx.map(i => `${xs[i]},${yS(arr[i])}`).join("L");
+        bbMitte.setAttribute("d", linie(bb.mitte));
+        bbOben.setAttribute("d",  linie(bb.oben));
+        bbUnten.setAttribute("d", linie(bb.unten));
+        // Fläche: oberes Band hin, unteres Band zurück
+        const obenPts  = idx.map(i => `${xs[i]},${yS(bb.oben[i])}`);
+        const untenPts = idx.slice().reverse().map(i => `${xs[i]},${yS(bb.unten[i])}`);
+        bbFill.setAttribute("d", "M" + obenPts.join("L") + "L" + untenPts.join("L") + "Z");
+        [bbFill, bbOben, bbUnten, bbMitte].forEach(e => e.style.display = "block");
+      } else {
+        [bbFill, bbOben, bbUnten, bbMitte].forEach(e => e.style.display = "none");
+      }
+      document.getElementById("legende").querySelector(".bb-legend")
+        .classList.toggle("aus", !bbAn);
+
       const hit = document.getElementById("hit-area");
       hit.setAttribute("x", ML); hit.setAttribute("y", MT);
       hit.setAttribute("width", CW); hit.setAttribute("height", CH);
@@ -454,27 +431,21 @@
       hit.onmousemove = (e) => {
         const rect = svg.getBoundingClientRect();
         const mx   = (e.clientX - rect.left) * (W / rect.width);
-        // Nächsten Datenpunkt finden
-        const idx  = Math.round((mx - ML) / CW * (daten.length-1));
-        const i    = Math.max(0, Math.min(daten.length-1, idx));
-        const px   = xs[i];
-        const py   = yS(daten[i].eroeffnung);
+        const i    = Math.max(0, Math.min(daten.length-1, Math.round((mx-ML)/CW*(daten.length-1))));
+        const px   = xs[i], py = yS(daten[i].eroeffnung);
 
-        cl.setAttribute("x1", px); cl.setAttribute("x2", px);
-        cl.setAttribute("y1", MT); cl.setAttribute("y2", MT+CH);
+        cl.setAttribute("x1",px); cl.setAttribute("x2",px);
+        cl.setAttribute("y1",MT); cl.setAttribute("y2",MT+CH);
         cl.style.display = "block";
-        cd.setAttribute("cx", px); cd.setAttribute("cy", py);
+        cd.setAttribute("cx",px); cd.setAttribute("cy",py);
         cd.style.display = "block";
 
-        // Tooltip positionieren (innerhalb wrap)
         const wRect = wrap.getBoundingClientRect();
         let tx = e.clientX - wRect.left + 14;
         let ty = e.clientY - wRect.top  - 10;
-        tt.style.display = "block";
-        // Verhindert, dass Tooltip rechts rausfällt
         if (tx + 140 > wRect.width) tx = e.clientX - wRect.left - 150;
-        tt.style.left = tx + "px";
-        tt.style.top  = ty + "px";
+        tt.style.left = tx + "px"; tt.style.top = ty + "px";
+        tt.style.display = "block";
         document.getElementById("tt-datum").textContent = daten[i].datum;
         document.getElementById("tt-kurs").textContent  =
           daten[i].eroeffnung.toLocaleString("de-DE",{minimumFractionDigits:2}) + " Pkt.";
@@ -483,7 +454,6 @@
         cl.style.display = cd.style.display = tt.style.display = "none";
       };
 
-      /* Info-Zeile */
       const delta = daten.at(-1).eroeffnung - daten[0].eroeffnung;
       const pct   = (delta / daten[0].eroeffnung * 100).toFixed(1);
       const sign  = delta >= 0 ? "+" : "";
@@ -492,7 +462,6 @@
         `<span style="color:${delta>=0?'#6bff8e':'#ff6b6b'}">${sign}${pct}%</span>`;
     }
 
-    /* Neuzeichnen bei Fenstergröße-Änderung */
     window.addEventListener("resize", () => {
       if (daxDaten && document.getElementById("panel-chart").classList.contains("aktiv"))
         zeichneChart(daxDaten, aktiveTage);

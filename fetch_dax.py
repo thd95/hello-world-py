@@ -1,27 +1,39 @@
+import argparse
 import json
-import yfinance as yf
+import sys
 
-# DAX-Daten laden: period1/period2 aus der Yahoo-URL entsprechen Unix-Timestamps
-# ^GDAXI ist das Yahoo-Finance-Symbol für den DAX
-ticker = yf.Ticker("^GDAXI")
+from dax import lade_dax
 
-# Historische Daten für den Zeitraum aus der URL abrufen
-# (2025-07-01 bis 2026-07-01, entspricht den Timestamps in der URL)
-hist = ticker.history(start="2023-07-01", end="2026-07-01")
+# ── Kommandozeilen-Argumente ──
+# Start-/Enddatum sind frei wählbar; ohne Angabe gelten die Standardwerte.
+parser = argparse.ArgumentParser(
+    description="Lädt historische DAX-Eröffnungskurse von Yahoo Finance."
+)
+parser.add_argument(
+    "--start", default="2023-07-01",
+    help="Startdatum im Format JJJJ-MM-TT (Standard: 2023-07-01)"
+)
+parser.add_argument(
+    "--end", default="2026-07-01",
+    help="Enddatum im Format JJJJ-MM-TT (Standard: 2026-07-01)"
+)
+parser.add_argument(
+    "--symbol", default="^GDAXI",
+    help="Yahoo-Finance-Symbol (Standard: ^GDAXI für den DAX)"
+)
+parser.add_argument(
+    "--out", default="dax_data.json",
+    help="Ausgabedatei (Standard: dax_data.json)"
+)
+args = parser.parse_args()
 
-if hist.empty:
-    print("Keine Daten gefunden.")
-else:
-    # Nur Datum und Eröffnungskurs behalten, als Liste von Dicts
-    daten = [
-        {
-            "datum": datum.strftime("%d.%m.%Y"),
-            "eroeffnung": round(row["Open"], 2)
-        }
-        for datum, row in hist.iterrows()
-    ]
+daten = lade_dax(args.start, args.end, args.symbol)
 
-    with open("dax_data.json", "w", encoding="utf-8") as f:
-        json.dump(daten, f, ensure_ascii=False, indent=2)
+if not daten:
+    print(f"Keine Daten gefunden für {args.symbol} ({args.start} bis {args.end}).")
+    sys.exit(1)
 
-    print(f"{len(daten)} Datensätze gespeichert in dax_data.json")
+with open(args.out, "w", encoding="utf-8") as f:
+    json.dump(daten, f, ensure_ascii=False, indent=2)
+
+print(f"{len(daten)} Datensätze ({args.start} bis {args.end}) gespeichert in {args.out}")
