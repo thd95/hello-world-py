@@ -1,0 +1,6 @@
+# Generierte DAX-Daten (mit fetch_dax.py erzeugen)
+dax_data.json
+
+# Python
+__pycache__/
+*.pyc

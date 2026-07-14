@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DAX-Kurse</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: #0d0d0d;
+      color: #e0e0e0;
+      font-family: "Courier New", monospace;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+      padding: 2rem;
+    }
+
+    h1 { font-size: 1.4rem; letter-spacing: 0.15em; margin-bottom: 0.4rem; color: #aaa; }
+    .subtitle { font-size: 0.8rem; color: #555; margin-bottom: 1.5rem; }
+
+    /* ── Tabs ── */
+    .tabs {
+      display: flex;
+      margin-bottom: 1.5rem;
+      border-bottom: 1px solid #333;
+      width: 100%;
+      max-width: 720px;
+    }
+    .tab {
+      padding: 0.5rem 1.2rem;
+      cursor: pointer;
+      font-family: inherit;
+      font-size: 0.85rem;
+      color: #555;
+      background: none;
+      border: none;
+      border-bottom: 2px solid transparent;
+      margin-bottom: -1px;
+      transition: color 0.15s, border-color 0.15s;
+    }
+    .tab:hover { color: #aaa; }
+    .tab.aktiv { color: #e0e0e0; border-bottom-color: #6bffff; }
+
+    .panel { display: none; width: 100%; max-width: 720px; }
+    .panel.aktiv { display: block; }
+
+    /* ── Gemeinsame Controls ── */
+    button {
+      background: #1e1e1e; border: 1px solid #444; border-radius: 4px;
+      color: #ccc; cursor: pointer; font-family: inherit; font-size: 0.9rem;
+      padding: 0.4rem 1rem; transition: background 0.15s, border-color 0.15s;
+    }
+    button:hover { background: #2a2a2a; border-color: #666; }
+    button:active { background: #333; }
+
+    /* ── Ladeleiste (Zeitraum wählen) ── */
+    .ladeleiste {
+      display: flex; flex-wrap: wrap; gap: 0.6rem; align-items: center;
+      width: 100%; max-width: 720px; margin-bottom: 1.2rem;
+      padding: 0.9rem 1rem; background: #111; border: 1px solid #222; border-radius: 6px;
+    }
+    .ladeleiste label { color: #888; font-size: 0.82rem; }
+    input[type="date"] {
+      background: #1a1a1a; border: 1px solid #333; border-radius: 4px;
+      color: #e0e0e0; font-family: inherit; font-size: 0.85rem;
+      padding: 0.35rem 0.5rem; outline: none; color-scheme: dark;
+    }
+    input[type="date"]:focus { border-color: #6bffff; }
+    .ladeleiste .lade-btn { border-color: #6bffff; color: #6bffff; }
+    .ladeleiste .lade-btn:hover { background: #0d1f1f; }
+
+    /* ── DAX-Tabelle ── */
+    .dax-controls { display: flex; gap: 0.75rem; margin-bottom: 1rem; align-items: center; }
+    .dax-status { font-size: 0.8rem; color: #555; margin-bottom: 1rem; }
+    .dax-status.fehler { color: #ff6b6b; }
+    .dax-status.ok { color: #6bff8e; }
+    .tabelle-wrapper { overflow-y: auto; max-height: 480px; border: 1px solid #222; border-radius: 6px; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+    thead th {
+      background: #1a1a1a; color: #888; font-weight: normal; letter-spacing: 0.05em;
+      padding: 0.6rem 1rem; text-align: left; position: sticky; top: 0;
+    }
+    tbody tr { border-top: 1px solid #1a1a1a; }
+    tbody tr:hover { background: #161616; }
+    td { padding: 0.45rem 1rem; color: #ccc; }
+    td.kurs { color: #6bffff; text-align: right; font-variant-numeric: tabular-nums; }
+    .kein-daten { text-align: center; padding: 2rem; color: #333; font-style: italic; }
+    .dax-info { margin-top: 0.6rem; font-size: 0.75rem; color: #444; }
+
+    /* ── DAX-Chart ── */
+    #chart-wrap {
+      position: relative;
+      background: #111;
+      border: 1px solid #222;
+      border-radius: 6px;
+      padding: 1.2rem 1.2rem 0.8rem;
+      user-select: none;
+    }
+    #chart-svg { display: block; width: 100%; overflow: visible; }
+
+    #tooltip {
+      position: absolute;
+      background: #1e1e1e;
+      border: 1px solid #333;
+      border-radius: 4px;
+      padding: 0.35rem 0.65rem;
+      font-size: 0.78rem;
+      color: #e0e0e0;
+      pointer-events: none;
+      white-space: nowrap;
+      display: none;
+    }
+    #tooltip .tt-datum { color: #888; margin-bottom: 0.1rem; }
+    #tooltip .tt-kurs  { color: #6bffff; font-size: 0.9rem; }
+
+    #crosshair-line { stroke: #444; stroke-width: 1; stroke-dasharray: 4 3; pointer-events: none; display: none; }
+    #crosshair-dot  { fill: #0d0d0d; stroke: #6bffff; stroke-width: 2; pointer-events: none; display: none; }
+
+    .chart-controls { display: flex; gap: 0.4rem; margin-bottom: 1rem; align-items: center; }
+    .range-btn {
+      padding: 0.25rem 0.65rem; font-size: 0.78rem; border-radius: 3px;
+      border: 1px solid #333; background: #1a1a1a; color: #666;
+      cursor: pointer; font-family: inherit; transition: color 0.1s, border-color 0.1s;
+    }
+    .range-btn:hover { color: #aaa; border-color: #555; }
+    .range-btn.aktiv { color: #6bffff; border-color: #6bffff; background: #0d1f1f; }
+    .chart-info { margin-top: 0.6rem; font-size: 0.75rem; color: #444; }
+    .chart-leer { text-align: center; padding: 4rem; color: #333; font-style: italic; }
+
+    /* Bollinger: Umschalter + Legende */
+    .bb-toggle {
+      display: flex; align-items: center; gap: 0.35rem;
+      margin-left: auto; font-size: 0.78rem; color: #888; cursor: pointer;
+    }
+    .bb-toggle input { accent-color: #a78bfa; cursor: pointer; }
+    .legende { display: flex; gap: 1.2rem; margin-bottom: 0.8rem; font-size: 0.75rem; color: #888; }
+    .legende span { display: inline-flex; align-items: center; gap: 0.4rem; }
+    .swatch { width: 14px; height: 3px; border-radius: 2px; display: inline-block; }
+    .bb-legend.aus { opacity: 0.3; }
+  </style>
+</head>
+<body>
+
+  <h1>// DAX-Kurse</h1>
+  <p class="subtitle">Historische Eröffnungskurse des DAX</p>
+
+  <!-- Gemeinsame Ladeleiste: Zeitraum wählen und direkt von Yahoo Finance laden -->
+  <div class="ladeleiste">
+    <label for="von">Von</label>
+    <input type="date" id="von" value="2023-07-01">
+    <label for="bis">Bis</label>
+    <input type="date" id="bis" value="2026-07-01">
+    <button class="lade-btn" onclick="ladeDaten()">Daten laden</button>
+    <span id="lade-status" class="dax-status" style="margin:0">Noch keine Daten geladen.</span>
+  </div>
+
+  <div class="tabs">
+    <button class="tab aktiv" onclick="zeigeTab('dax', this)">Tabelle</button>
+    <button class="tab" onclick="zeigeTab('chart', this)">Chart</button>
+  </div>
+
+  <!-- Panel 1: DAX-Tabelle -->
+  <div id="panel-dax" class="panel aktiv">
+    <div class="tabelle-wrapper">
+      <table>
+        <thead><tr><th>Datum</th><th style="text-align:right">Eröffnung (Punkte)</th></tr></thead>
+        <tbody id="dax-tbody">
+          <tr><td colspan="2" class="kein-daten">Bitte „Daten laden" klicken</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div id="dax-info" class="dax-info"></div>
+  </div>
+
+  <!-- Panel 2: DAX-Chart -->
+  <div id="panel-chart" class="panel">
+    <div class="chart-controls" id="range-buttons" style="display:none">
+      <span style="color:#555;font-size:0.78rem">Zeitraum:</span>
+      <button class="range-btn" onclick="setRange(90,this)">3 M</button>
+      <button class="range-btn" onclick="setRange(180,this)">6 M</button>
+      <button class="range-btn aktiv" onclick="setRange(365,this)">1 J</button>
+      <button class="range-btn" onclick="setRange(0,this)">Gesamt</button>
+      <label class="bb-toggle">
+        <input type="checkbox" id="bb-check" checked onchange="if(daxDaten)zeichneChart(daxDaten,aktiveTage)">
+        Bollinger (20, 2σ)
+      </label>
+    </div>
+
+    <div class="legende" id="legende">
+      <span><span class="swatch" style="background:#6bffff"></span>Kurs</span>
+      <span class="bb-legend"><span class="swatch" style="background:#a78bfa"></span>Bollinger-Bänder</span>
+    </div>
+
+    <div id="chart-wrap">
+      <div class="chart-leer" id="chart-leer">Bitte „Daten laden" klicken</div>
+      <svg id="chart-svg" style="display:none" aria-label="DAX Eröffnungskurs Zeitreihe">
+        <defs>
+          <linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%"   stop-color="#6bffff" stop-opacity="0.18"/>
+            <stop offset="100%" stop-color="#6bffff" stop-opacity="0"/>
+          </linearGradient>
+          <clipPath id="chartClip"><rect id="clipRect"/></clipPath>
+        </defs>
+        <g id="grid"></g>
+        <path id="area-path" fill="url(#areaGrad)" clip-path="url(#chartClip)"/>
+        <!-- Bollinger-Bänder (zwischen Kursfläche und Kurslinie) -->
+        <path id="bb-fill"  fill="#a78bfa" fill-opacity="0.10" clip-path="url(#chartClip)"/>
+        <path id="bb-upper" fill="none" stroke="#a78bfa" stroke-width="1" stroke-dasharray="4 3" clip-path="url(#chartClip)"/>
+        <path id="bb-lower" fill="none" stroke="#a78bfa" stroke-width="1" stroke-dasharray="4 3" clip-path="url(#chartClip)"/>
+        <path id="bb-mid"   fill="none" stroke="#a78bfa" stroke-width="1" clip-path="url(#chartClip)"/>
+        <path id="line-path" fill="none" stroke="#6bffff" stroke-width="1.5"
+              stroke-linejoin="round" stroke-linecap="round" clip-path="url(#chartClip)"/>
+        <g id="x-axis"></g>
+        <g id="y-axis"></g>
+        <line id="crosshair-line"/>
+        <circle id="crosshair-dot" r="4"/>
+        <rect id="hit-area" fill="transparent" style="cursor:crosshair"/>
+      </svg>
+      <div id="tooltip">
+        <div class="tt-datum" id="tt-datum"></div>
+        <div class="tt-kurs"  id="tt-kurs"></div>
+      </div>
+    </div>
+    <div id="chart-info" class="chart-info"></div>
+  </div>
+
+  <script>
+    let daxDaten  = null;
+    let aktiveTage = 365;
+
+    /* ── Tab-Steuerung ── */
+    function zeigeTab(name, btn) {
+      document.querySelectorAll(".panel").forEach(p => p.classList.remove("aktiv"));
+      document.querySelectorAll(".tab").forEach(t => t.classList.remove("aktiv"));
+      document.getElementById("panel-" + name).classList.add("aktiv");
+      btn.classList.add("aktiv");
+      if (name === "chart" && daxDaten) zeichneChart(daxDaten, aktiveTage);
+    }
+
+    /* ── Daten laden (über die API, Zeitraum aus der Ladeleiste) ── */
+    async function ladeDaten() {
+      const status = document.getElementById("lade-status");
+      const von = document.getElementById("von").value;
+      const bis = document.getElementById("bis").value;
+
+      if (!von || !bis) {
+        status.className = "dax-status fehler";
+        status.textContent = "✗ Bitte Von- und Bis-Datum wählen.";
+        return;
+      }
+      if (von >= bis) {
+        status.className = "dax-status fehler";
+        status.textContent = "✗ Das Von-Datum muss vor dem Bis-Datum liegen.";
+        return;
+      }
+
+      status.className = "dax-status";
+      status.textContent = "Lade von Yahoo Finance …";
+
+      try {
+        const res = await fetch(`/api/dax?start=${von}&end=${bis}`);
+        const daten = await res.json();
+        if (!res.ok) throw new Error(daten.fehler || `HTTP ${res.status}`);
+        if (!daten.length) throw new Error("Keine Daten für diesen Zeitraum.");
+
+        // Nach Datum aufsteigend sortieren (älteste zuerst) — damit das Chart
+        // von links (alt) nach rechts (neu) läuft, unabhängig von der API-Reihenfolge.
+        daxDaten = daten.slice().sort((a, b) => parseDE(a.datum) - parseDE(b.datum));
+
+        status.className = "dax-status ok";
+        status.textContent = `✓ ${daxDaten.length} Handelstage geladen`;
+
+        // Beide Ansichten aktualisieren
+        zeigeTabelle(daxDaten);
+        document.getElementById("range-buttons").style.display = "flex";
+        zeichneChart(daxDaten, aktiveTage);
+      } catch(err) {
+        status.className = "dax-status fehler";
+        status.textContent = `✗ Fehler: ${err.message}`;
+      }
+    }
+
+    /* ── DAX-Tabelle füllen (neueste zuerst) ── */
+    function zeigeTabelle(daten) {
+      document.getElementById("dax-tbody").innerHTML = daten.slice().reverse().map(d => `
+        <tr>
+          <td>${d.datum}</td>
+          <td class="kurs">${d.eroeffnung.toLocaleString("de-DE",{minimumFractionDigits:2})}</td>
+        </tr>`).join("");
+      document.getElementById("dax-info").textContent =
+        `Zeitraum: ${daten[0].datum} → ${daten.at(-1).datum}`;
+    }
+
+    function setRange(tage, btn) {
+      aktiveTage = tage;
+      document.querySelectorAll(".range-btn").forEach(b => b.classList.remove("aktiv"));
+      btn.classList.add("aktiv");
+      if (daxDaten) zeichneChart(daxDaten, tage);
+    }
+
+    function parseDE(s) {
+      const [d,m,y] = s.split(".");
+      return new Date(+y, +m-1, +d);
+    }
+
+    /* ── Bollinger-Bänder ──
+       mitte = gleitender Mittelwert (SMA) über 'periode' Werte
+       oben/unten = mitte ± k · Standardabweichung (Population, gleiches Fenster)
+       Die ersten (periode-1) Werte bleiben null, da das Fenster noch nicht voll ist. */
+    function berechneBollinger(vals, periode, k) {
+      const mitte = [], oben = [], unten = [];
+      for (let i = 0; i < vals.length; i++) {
+        if (i < periode - 1) { mitte.push(null); oben.push(null); unten.push(null); continue; }
+        const fenster = vals.slice(i - periode + 1, i + 1);
+        const m  = fenster.reduce((a, b) => a + b, 0) / periode;
+        const sd = Math.sqrt(fenster.reduce((a, b) => a + (b - m) ** 2, 0) / periode);
+        mitte.push(m); oben.push(m + k * sd); unten.push(m - k * sd);
+      }
+      return { mitte, oben, unten };
+    }
+
+    function zeichneChart(alle, tage) {
+      const daten = tage === 0 ? alle
+        : alle.filter(d => {
+            const diff = (parseDE(alle.at(-1).datum) - parseDE(d.datum)) / 86400000;
+            return diff <= tage;
+          });
+
+      const svg  = document.getElementById("chart-svg");
+      const leer = document.getElementById("chart-leer");
+      const wrap = document.getElementById("chart-wrap");
+
+      leer.style.display = "none";
+      svg.style.display  = "block";
+
+      const W  = wrap.clientWidth - 24;
+      const H  = 340;
+      const ML = 72, MR = 16, MT = 16, MB = 40;
+      const CW = W - ML - MR;
+      const CH = H - MT - MB;
+
+      svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+      svg.setAttribute("height", H);
+
+      const cr = document.getElementById("clipRect");
+      cr.setAttribute("x", ML); cr.setAttribute("y", MT);
+      cr.setAttribute("width", CW); cr.setAttribute("height", CH);
+
+      const xs   = daten.map((_,i) => ML + (i/(daten.length-1||1))*CW);
+      const vals = daten.map(d => d.eroeffnung);
+
+      // ── Bollinger-Bänder berechnen (SMA über PERIODE, ±K·Standardabweichung) ──
+      const PERIODE = 20, K = 2;
+      const bbAn = document.getElementById("bb-check").checked && daten.length >= PERIODE;
+      const bb = berechneBollinger(vals, PERIODE, K);
+
+      // Y-Bereich: bei aktiven Bändern auch deren Werte einbeziehen,
+      // damit oberes/unteres Band nicht abgeschnitten werden.
+      let alleWerte = vals.slice();
+      if (bbAn) alleWerte = alleWerte.concat(bb.oben.filter(v => v != null), bb.unten.filter(v => v != null));
+      const vMin = Math.min(...alleWerte), vMax = Math.max(...alleWerte);
+      const pad  = (vMax - vMin) * 0.05 || 1;
+      const yMin = vMin - pad, yMax = vMax + pad;
+      const yS   = v => MT + CH - ((v - yMin)/(yMax - yMin)) * CH;
+
+      const grid  = document.getElementById("grid");
+      const yAxis = document.getElementById("y-axis");
+      grid.innerHTML = ""; yAxis.innerHTML = "";
+      for (let i=0; i<=5; i++) {
+        const v = yMin + (yMax - yMin) * (i/5);
+        const y = yS(v);
+        grid.innerHTML  += `<line x1="${ML}" x2="${ML+CW}" y1="${y}" y2="${y}" stroke="#1e1e1e" stroke-width="1"/>`;
+        yAxis.innerHTML += `<text x="${ML-8}" y="${y+4}" text-anchor="end" fill="#555" font-size="11" font-family="Courier New,monospace">${Math.round(v).toLocaleString("de-DE")}</text>`;
+      }
+
+      const xAxis = document.getElementById("x-axis");
+      xAxis.innerHTML = "";
+      const gesehen = new Set();
+      daten.forEach((d,i) => {
+        const dt  = parseDE(d.datum);
+        const key = `${dt.getFullYear()}-${dt.getMonth()}`;
+        if (!gesehen.has(key)) {
+          gesehen.add(key);
+          const label = dt.toLocaleDateString("de-DE",{month:"short",year:"2-digit"});
+          xAxis.innerHTML +=
+            `<text x="${xs[i]}" y="${MT+CH+22}" text-anchor="middle" fill="#555" font-size="10" font-family="Courier New,monospace">${label}</text>
+             <line x1="${xs[i]}" x2="${xs[i]}" y1="${MT+CH}" y2="${MT+CH+5}" stroke="#333"/>`;
+        }
+      });
+
+      const pts = daten.map((d,i) => `${xs[i]},${yS(d.eroeffnung)}`);
+      document.getElementById("line-path").setAttribute("d", "M" + pts.join("L"));
+      document.getElementById("area-path").setAttribute("d",
+        `M${xs[0]},${MT+CH} L` + pts.join("L") + ` L${xs.at(-1)},${MT+CH} Z`);
+
+      // ── Bollinger-Bänder zeichnen ──
+      const bbFill  = document.getElementById("bb-fill");
+      const bbOben  = document.getElementById("bb-upper");
+      const bbUnten = document.getElementById("bb-lower");
+      const bbMitte = document.getElementById("bb-mid");
+      if (bbAn) {
+        // nur Punkte ab Index PERIODE-1 haben gültige Bandwerte
+        const idx    = [];
+        for (let i = 0; i < daten.length; i++) if (bb.mitte[i] != null) idx.push(i);
+        const linie  = (arr) => "M" + idx.map(i => `${xs[i]},${yS(arr[i])}`).join("L");
+        bbMitte.setAttribute("d", linie(bb.mitte));
+        bbOben.setAttribute("d",  linie(bb.oben));
+        bbUnten.setAttribute("d", linie(bb.unten));
+        // Fläche: oberes Band hin, unteres Band zurück
+        const obenPts  = idx.map(i => `${xs[i]},${yS(bb.oben[i])}`);
+        const untenPts = idx.slice().reverse().map(i => `${xs[i]},${yS(bb.unten[i])}`);
+        bbFill.setAttribute("d", "M" + obenPts.join("L") + "L" + untenPts.join("L") + "Z");
+        [bbFill, bbOben, bbUnten, bbMitte].forEach(e => e.style.display = "block");
+      } else {
+        [bbFill, bbOben, bbUnten, bbMitte].forEach(e => e.style.display = "none");
+      }
+      document.getElementById("legende").querySelector(".bb-legend")
+        .classList.toggle("aus", !bbAn);
+
+      const hit = document.getElementById("hit-area");
+      hit.setAttribute("x", ML); hit.setAttribute("y", MT);
+      hit.setAttribute("width", CW); hit.setAttribute("height", CH);
+
+      const cl = document.getElementById("crosshair-line");
+      const cd = document.getElementById("crosshair-dot");
+      const tt = document.getElementById("tooltip");
+
+      hit.onmousemove = (e) => {
+        const rect = svg.getBoundingClientRect();
+        const mx   = (e.clientX - rect.left) * (W / rect.width);
+        const i    = Math.max(0, Math.min(daten.length-1, Math.round((mx-ML)/CW*(daten.length-1))));
+        const px   = xs[i], py = yS(daten[i].eroeffnung);
+
+        cl.setAttribute("x1",px); cl.setAttribute("x2",px);
+        cl.setAttribute("y1",MT); cl.setAttribute("y2",MT+CH);
+        cl.style.display = "block";
+        cd.setAttribute("cx",px); cd.setAttribute("cy",py);
+        cd.style.display = "block";
+
+        const wRect = wrap.getBoundingClientRect();
+        let tx = e.clientX - wRect.left + 14;
+        let ty = e.clientY - wRect.top  - 10;
+        if (tx + 140 > wRect.width) tx = e.clientX - wRect.left - 150;
+        tt.style.left = tx + "px"; tt.style.top = ty + "px";
+        tt.style.display = "block";
+        document.getElementById("tt-datum").textContent = daten[i].datum;
+        document.getElementById("tt-kurs").textContent  =
+          daten[i].eroeffnung.toLocaleString("de-DE",{minimumFractionDigits:2}) + " Pkt.";
+      };
+      hit.onmouseleave = () => {
+        cl.style.display = cd.style.display = tt.style.display = "none";
+      };
+
+      const delta = daten.at(-1).eroeffnung - daten[0].eroeffnung;
+      const pct   = (delta / daten[0].eroeffnung * 100).toFixed(1);
+      const sign  = delta >= 0 ? "+" : "";
+      document.getElementById("chart-info").innerHTML =
+        `${daten[0].datum} → ${daten.at(-1).datum} &nbsp;|&nbsp; ` +
+        `<span style="color:${delta>=0?'#6bff8e':'#ff6b6b'}">${sign}${pct}%</span>`;
+    }
+
+    window.addEventListener("resize", () => {
+      if (daxDaten && document.getElementById("panel-chart").classList.contains("aktiv"))
+        zeichneChart(daxDaten, aktiveTage);
+    });
+  </script>
+
+</body>
+</html>
