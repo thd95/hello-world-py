@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>DAX-Kurse</title>
+  <title>Aktienkurse</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -69,6 +69,12 @@
       padding: 0.35rem 0.5rem; outline: none; color-scheme: dark;
     }
     input[type="date"]:focus { border-color: #6bffff; }
+    select {
+      background: #1a1a1a; border: 1px solid #333; border-radius: 4px;
+      color: #e0e0e0; font-family: inherit; font-size: 0.85rem;
+      padding: 0.35rem 0.5rem; outline: none; cursor: pointer;
+    }
+    select:focus { border-color: #6bffff; }
     .ladeleiste .lade-btn { border-color: #6bffff; color: #6bffff; }
     .ladeleiste .lade-btn:hover { background: #0d1f1f; }
 
@@ -144,11 +150,23 @@
 </head>
 <body>
 
-  <h1>// DAX-Kurse</h1>
-  <p class="subtitle">Historische Eröffnungskurse des DAX</p>
+  <h1 id="titel">// Kurse</h1>
+  <p class="subtitle" id="untertitel">Historische Eröffnungskurse</p>
 
-  <!-- Gemeinsame Ladeleiste: Zeitraum wählen und direkt von Yahoo Finance laden -->
+  <!-- Gemeinsame Ladeleiste: Wert und Zeitraum wählen und direkt von Yahoo Finance laden -->
   <div class="ladeleiste">
+    <label for="symbol">Wert</label>
+    <select id="symbol">
+      <option value="^GDAXI" data-einheit="Pkt." data-einheit-lang="Punkte">DAX</option>
+      <option value="^GSPC"  data-einheit="Pkt." data-einheit-lang="Punkte">S&amp;P 500</option>
+      <option value="^DJI"   data-einheit="Pkt." data-einheit-lang="Punkte">Dow Jones</option>
+      <option value="AAPL"   data-einheit="$" data-einheit-lang="USD">Apple</option>
+      <option value="MSFT"   data-einheit="$" data-einheit-lang="USD">Microsoft</option>
+      <option value="TSLA"   data-einheit="$" data-einheit-lang="USD">Tesla</option>
+      <option value="SAP.DE" data-einheit="€" data-einheit-lang="EUR">SAP</option>
+      <option value="SIE.DE" data-einheit="€" data-einheit-lang="EUR">Siemens</option>
+      <option value="BTC-USD" data-einheit="$" data-einheit-lang="USD">Bitcoin</option>
+    </select>
     <label for="von">Von</label>
     <input type="date" id="von" value="2023-07-01">
     <label for="bis">Bis</label>
@@ -166,7 +184,7 @@
   <div id="panel-dax" class="panel aktiv">
     <div class="tabelle-wrapper">
       <table>
-        <thead><tr><th>Datum</th><th style="text-align:right">Eröffnung (Punkte)</th></tr></thead>
+        <thead><tr><th>Datum</th><th style="text-align:right" id="kurs-header">Eröffnung (Punkte)</th></tr></thead>
         <tbody id="dax-tbody">
           <tr><td colspan="2" class="kein-daten">Bitte „Daten laden" klicken</td></tr>
         </tbody>
@@ -230,6 +248,7 @@
   <script>
     let daxDaten  = null;
     let aktiveTage = 365;
+    let aktuelleEinheit = "Pkt.";   // Einheit des aktuell geladenen Werts (z. B. "Pkt.", "$", "€")
 
     /* ── Tab-Steuerung ── */
     function zeigeTab(name, btn) {
@@ -245,6 +264,12 @@
       const status = document.getElementById("lade-status");
       const von = document.getElementById("von").value;
       const bis = document.getElementById("bis").value;
+      const sel = document.getElementById("symbol");
+      const opt = sel.options[sel.selectedIndex];
+      const symbol      = sel.value;
+      const name        = opt.textContent;
+      const einheit     = opt.dataset.einheit;      // z. B. "Pkt.", "$", "€"
+      const einheitLang = opt.dataset.einheitLang;  // z. B. "Punkte", "USD", "EUR"
 
       if (!von || !bis) {
         status.className = "dax-status fehler";
@@ -258,10 +283,16 @@
       }
 
       status.className = "dax-status";
-      status.textContent = "Lade von Yahoo Finance …";
+      status.textContent = `Lade ${name} von Yahoo Finance …`;
+
+      // Einheit & Beschriftungen an den gewählten Wert anpassen
+      aktuelleEinheit = einheit;
+      document.getElementById("titel").textContent = `// ${name}`;
+      document.getElementById("untertitel").textContent = `Historische Eröffnungskurse — ${name} (${symbol})`;
+      document.getElementById("kurs-header").textContent = `Eröffnung (${einheitLang})`;
 
       try {
-        const res = await fetch(`/api/dax?start=${von}&end=${bis}`);
+        const res = await fetch(`/api/dax?start=${von}&end=${bis}&symbol=${encodeURIComponent(symbol)}`);
         const daten = await res.json();
         if (!res.ok) throw new Error(daten.fehler || `HTTP ${res.status}`);
         if (!daten.length) throw new Error("Keine Daten für diesen Zeitraum.");
@@ -448,7 +479,7 @@
         tt.style.display = "block";
         document.getElementById("tt-datum").textContent = daten[i].datum;
         document.getElementById("tt-kurs").textContent  =
-          daten[i].eroeffnung.toLocaleString("de-DE",{minimumFractionDigits:2}) + " Pkt.";
+          daten[i].eroeffnung.toLocaleString("de-DE",{minimumFractionDigits:2}) + " " + aktuelleEinheit;
       };
       hit.onmouseleave = () => {
         cl.style.display = cd.style.display = tt.style.display = "none";
