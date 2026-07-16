@@ -63,12 +63,12 @@
       padding: 0.9rem 1rem; background: #111; border: 1px solid #222; border-radius: 6px;
     }
     .ladeleiste label { color: #888; font-size: 0.82rem; }
-    input[type="date"] {
+    input[type="date"], input[type="text"] {
       background: #1a1a1a; border: 1px solid #333; border-radius: 4px;
       color: #e0e0e0; font-family: inherit; font-size: 0.85rem;
       padding: 0.35rem 0.5rem; outline: none; color-scheme: dark;
     }
-    input[type="date"]:focus { border-color: #6bffff; }
+    input[type="date"]:focus, input[type="text"]:focus { border-color: #6bffff; }
     select {
       background: #1a1a1a; border: 1px solid #333; border-radius: 4px;
       color: #e0e0e0; font-family: inherit; font-size: 0.85rem;
@@ -189,6 +189,7 @@
   <div class="tabs">
     <button class="tab aktiv" onclick="zeigeTab('dax', this)">Tabelle</button>
     <button class="tab" onclick="zeigeTab('chart', this)">Chart</button>
+    <button class="tab" onclick="zeigeTab('symbole', this)">Symbole</button>
   </div>
 
   <!-- Panel 1: DAX-Tabelle -->
@@ -277,6 +278,42 @@
     <div id="chart-stats" class="stats"></div>
   </div>
 
+  <!-- Panel 3: Symbole verwalten -->
+  <div id="panel-symbole" class="panel">
+    <div class="ladeleiste">
+      <label for="neu-symbol">Symbol</label>
+      <input type="text" id="neu-symbol" placeholder="z. B. NVDA" size="10">
+      <label for="neu-name">Name</label>
+      <input type="text" id="neu-name" placeholder="optional" size="14">
+      <label for="neu-einheit">Einheit</label>
+      <select id="neu-einheit">
+        <option value="$|USD">$ (USD)</option>
+        <option value="€|EUR">€ (EUR)</option>
+        <option value="Pkt.|Punkte">Punkte</option>
+      </select>
+      <button class="lade-btn" onclick="fuegeSymbolHinzu()">Hinzufügen</button>
+      <span id="symbol-status" class="dax-status" style="margin:0"></span>
+    </div>
+    <div class="tabelle-wrapper">
+      <table>
+        <thead>
+          <tr>
+            <th>Symbol</th><th>Name</th><th>Einheit</th>
+            <th style="text-align:right">Kurse in DB</th><th>Cache-Zeitraum</th>
+          </tr>
+        </thead>
+        <tbody id="symbole-tbody">
+          <tr><td colspan="5" class="kein-daten">Lade Symbole …</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="dax-info">
+      Neue Symbole werden vor dem Speichern gegen Yahoo Finance geprüft — jedes dort
+      gültige Symbol funktioniert (z. B. NVDA, ^GSPC, EURUSD=X). Ohne Namen wird der
+      Anzeigename von Yahoo übernommen.
+    </div>
+  </div>
+
   <script>
     let daxDaten  = null;
     let aktiveTage = 365;
@@ -289,6 +326,74 @@
       document.getElementById("panel-" + name).classList.add("aktiv");
       btn.classList.add("aktiv");
       if (name === "chart" && daxDaten) zeichneChart(daxDaten, aktiveTage);
+      if (name === "symbole") ladeWerte();
+    }
+
+    /* ── Symbole: Liste aus der DB laden (füllt Dropdown und Symbol-Tab) ── */
+    async function ladeWerte() {
+      try {
+        const res = await fetch("/api/werte");
+        const werte = await res.json();
+        if (!res.ok) throw new Error(werte.fehler || `HTTP ${res.status}`);
+
+        // Dropdown der Ladeleiste neu befüllen, Auswahl beibehalten
+        const sel = document.getElementById("symbol");
+        const auswahl = sel.value;
+        sel.innerHTML = werte.map(w =>
+          `<option value="${w.symbol}" data-einheit="${w.einheit}" data-einheit-lang="${w.einheit_lang}">${w.name}</option>`
+        ).join("");
+        if ([...sel.options].some(o => o.value === auswahl)) sel.value = auswahl;
+
+        // Tabelle im Symbol-Tab
+        document.getElementById("symbole-tbody").innerHTML = werte.map(w => `
+          <tr>
+            <td>${w.symbol}</td>
+            <td>${w.name}</td>
+            <td>${w.einheit_lang || "—"}</td>
+            <td class="kurs">${w.anzahl_kurse.toLocaleString("de-DE")}</td>
+            <td>${w.cached_von ? `${w.cached_von} – ${w.cached_bis}` : "—"}</td>
+          </tr>`).join("")
+          || `<tr><td colspan="5" class="kein-daten">Keine Werte in der Datenbank</td></tr>`;
+      } catch (err) {
+        document.getElementById("symbole-tbody").innerHTML =
+          `<tr><td colspan="5" class="kein-daten">Fehler beim Laden: ${err.message}</td></tr>`;
+      }
+    }
+
+    /* ── Symbole: neuen Wert anlegen (Server prüft zuerst bei Yahoo Finance) ── */
+    async function fuegeSymbolHinzu() {
+      const status = document.getElementById("symbol-status");
+      const symbol = document.getElementById("neu-symbol").value.trim();
+      const name   = document.getElementById("neu-name").value.trim();
+      const [einheit, einheitLang] = document.getElementById("neu-einheit").value.split("|");
+
+      if (!symbol) {
+        status.className = "dax-status fehler";
+        status.textContent = "✗ Bitte ein Symbol angeben.";
+        return;
+      }
+
+      status.className = "dax-status";
+      status.textContent = `Prüfe ${symbol} bei Yahoo Finance …`;
+
+      try {
+        const res = await fetch("/api/werte", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ symbol, name, einheit, einheit_lang: einheitLang }),
+        });
+        const antwort = await res.json();
+        if (!res.ok) throw new Error(antwort.fehler || `HTTP ${res.status}`);
+
+        status.className = "dax-status ok";
+        status.textContent = `✓ ${antwort.name} (${antwort.symbol}) hinzugefügt`;
+        document.getElementById("neu-symbol").value = "";
+        document.getElementById("neu-name").value = "";
+        ladeWerte();
+      } catch (err) {
+        status.className = "dax-status fehler";
+        status.textContent = `✗ ${err.message}`;
+      }
     }
 
     /* ── Daten laden (über die API, Zeitraum aus der Ladeleiste) ── */
@@ -617,6 +722,9 @@
       if (daxDaten && document.getElementById("panel-chart").classList.contains("aktiv"))
         zeichneChart(daxDaten, aktiveTage);
     });
+
+    // Beim Start das Dropdown und den Symbol-Tab aus der Datenbank befüllen
+    ladeWerte();
   </script>
 
 </body>
