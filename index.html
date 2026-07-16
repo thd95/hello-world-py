@@ -146,6 +146,17 @@
     .legende span { display: inline-flex; align-items: center; gap: 0.4rem; }
     .swatch { width: 14px; height: 3px; border-radius: 2px; display: inline-block; }
     .bb-legend.aus { opacity: 0.3; }
+    .ma-legend.aus { opacity: 0.3; }
+
+    /* ── Mittelwert-Kennzahlen ── */
+    .stats { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+    .stats-titel { flex-basis: 100%; font-size: 0.75rem; color: #555; margin-top: 1rem; }
+    .stat {
+      background: #111; border: 1px solid #222; border-radius: 6px;
+      padding: 0.5rem 0.9rem; min-width: 140px;
+    }
+    .stat .stat-label { font-size: 0.7rem; color: #555; margin-bottom: 0.15rem; }
+    .stat .stat-wert  { font-size: 0.9rem; color: #6bffff; font-variant-numeric: tabular-nums; }
   </style>
 </head>
 <body>
@@ -191,6 +202,7 @@
       </table>
     </div>
     <div id="dax-info" class="dax-info"></div>
+    <div id="dax-stats" class="stats"></div>
   </div>
 
   <!-- Panel 2: DAX-Chart -->
@@ -205,11 +217,26 @@
         <input type="checkbox" id="bb-check" checked onchange="if(daxDaten)zeichneChart(daxDaten,aktiveTage)">
         Bollinger (20, 2σ)
       </label>
+      <label class="bb-toggle" style="margin-left:0">
+        <input type="checkbox" id="sma50-check" checked style="accent-color:#ffb86b" onchange="if(daxDaten)zeichneChart(daxDaten,aktiveTage)">
+        SMA 50
+      </label>
+      <label class="bb-toggle" style="margin-left:0">
+        <input type="checkbox" id="sma200-check" checked style="accent-color:#ff6bb5" onchange="if(daxDaten)zeichneChart(daxDaten,aktiveTage)">
+        SMA 200
+      </label>
+      <label class="bb-toggle" style="margin-left:0">
+        <input type="checkbox" id="ema20-check" style="accent-color:#6bff8e" onchange="if(daxDaten)zeichneChart(daxDaten,aktiveTage)">
+        EMA 20
+      </label>
     </div>
 
     <div class="legende" id="legende">
       <span><span class="swatch" style="background:#6bffff"></span>Kurs</span>
       <span class="bb-legend"><span class="swatch" style="background:#a78bfa"></span>Bollinger-Bänder</span>
+      <span class="ma-legend" id="sma50-legend"><span class="swatch" style="background:#ffb86b"></span>SMA 50</span>
+      <span class="ma-legend" id="sma200-legend"><span class="swatch" style="background:#ff6bb5"></span>SMA 200</span>
+      <span class="ma-legend aus" id="ema20-legend"><span class="swatch" style="background:#6bff8e"></span>EMA 20</span>
     </div>
 
     <div id="chart-wrap">
@@ -229,6 +256,10 @@
         <path id="bb-upper" fill="none" stroke="#a78bfa" stroke-width="1" stroke-dasharray="4 3" clip-path="url(#chartClip)"/>
         <path id="bb-lower" fill="none" stroke="#a78bfa" stroke-width="1" stroke-dasharray="4 3" clip-path="url(#chartClip)"/>
         <path id="bb-mid"   fill="none" stroke="#a78bfa" stroke-width="1" clip-path="url(#chartClip)"/>
+        <!-- Gleitende Durchschnitte (zwischen Bändern und Kurslinie) -->
+        <path id="sma50-path"  fill="none" stroke="#ffb86b" stroke-width="1.2" clip-path="url(#chartClip)"/>
+        <path id="sma200-path" fill="none" stroke="#ff6bb5" stroke-width="1.2" clip-path="url(#chartClip)"/>
+        <path id="ema20-path"  fill="none" stroke="#6bff8e" stroke-width="1.2" clip-path="url(#chartClip)"/>
         <path id="line-path" fill="none" stroke="#6bffff" stroke-width="1.5"
               stroke-linejoin="round" stroke-linecap="round" clip-path="url(#chartClip)"/>
         <g id="x-axis"></g>
@@ -243,6 +274,7 @@
       </div>
     </div>
     <div id="chart-info" class="chart-info"></div>
+    <div id="chart-stats" class="stats"></div>
   </div>
 
   <script>
@@ -323,6 +355,7 @@
         </tr>`).join("");
       document.getElementById("dax-info").textContent =
         `Zeitraum: ${daten[0].datum} → ${daten.at(-1).datum}`;
+      zeigeStats("dax-stats", daten.map(d => d.eroeffnung), "Mittelwerte — gesamter geladener Zeitraum");
     }
 
     function setRange(tage, btn) {
@@ -351,6 +384,62 @@
         mitte.push(m); oben.push(m + k * sd); unten.push(m - k * sd);
       }
       return { mitte, oben, unten };
+    }
+
+    /* ── Gleitende Durchschnitte ──
+       SMA: einfacher gleitender Mittelwert über n Werte (laufende Summe).
+       EMA: exponentiell gewichteter Mittelwert, gestartet mit dem SMA der
+            ersten n Werte, danach ema = kurs·k + ema·(1−k) mit k = 2/(n+1).
+       Die ersten (n−1) Werte bleiben jeweils null (Fenster noch nicht voll). */
+    function berechneSMA(vals, n) {
+      const out = [];
+      let summe = 0;
+      for (let i = 0; i < vals.length; i++) {
+        summe += vals[i];
+        if (i >= n) summe -= vals[i - n];
+        out.push(i >= n - 1 ? summe / n : null);
+      }
+      return out;
+    }
+
+    function berechneEMA(vals, n) {
+      const out = [], k = 2 / (n + 1);
+      let summe = 0, ema = null;
+      for (let i = 0; i < vals.length; i++) {
+        summe += vals[i];
+        if (i < n - 1) { out.push(null); continue; }
+        ema = (i === n - 1) ? summe / n : vals[i] * k + ema * (1 - k);
+        out.push(ema);
+      }
+      return out;
+    }
+
+    /* ── Statistische Mittelwerte über eine Kursreihe ── */
+    function berechneMittelwerte(vals) {
+      const n = vals.length;
+      const arith = vals.reduce((a, b) => a + b, 0) / n;
+      const sortiert = vals.slice().sort((a, b) => a - b);
+      const median = n % 2 ? sortiert[(n - 1) / 2] : (sortiert[n / 2 - 1] + sortiert[n / 2]) / 2;
+      // geometrisch über Logarithmen (vermeidet Überlauf bei langen Reihen)
+      const geom = Math.exp(vals.reduce((a, b) => a + Math.log(b), 0) / n);
+      const harm = n / vals.reduce((a, b) => a + 1 / b, 0);
+      return { arith, median, geom, harm };
+    }
+
+    function zeigeStats(elId, vals, titel) {
+      const m = berechneMittelwerte(vals);
+      const f = v => v.toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+                     + " " + aktuelleEinheit;
+      document.getElementById(elId).innerHTML =
+        `<div class="stats-titel">${titel} (${vals.length} Handelstage)</div>` +
+        [
+          ["Arithmetisches Mittel", f(m.arith)],
+          ["Median", f(m.median)],
+          ["Geometrisches Mittel", f(m.geom)],
+          ["Harmonisches Mittel", f(m.harm)],
+        ].map(([label, wert]) =>
+          `<div class="stat"><div class="stat-label">${label}</div><div class="stat-wert">${wert}</div></div>`
+        ).join("");
     }
 
     function zeichneChart(alle, tage) {
@@ -388,10 +477,26 @@
       const bbAn = document.getElementById("bb-check").checked && daten.length >= PERIODE;
       const bb = berechneBollinger(vals, PERIODE, K);
 
-      // Y-Bereich: bei aktiven Bändern auch deren Werte einbeziehen,
-      // damit oberes/unteres Band nicht abgeschnitten werden.
+      // ── Gleitende Durchschnitte: über die Gesamtdaten berechnet und aufs
+      //    Fenster zugeschnitten, damit z. B. der SMA 200 auch am Fensteranfang
+      //    korrekte Werte aus der Vorgeschichte zeigt. ──
+      const alleVals = alle.map(d => d.eroeffnung);
+      const offset = alle.length - daten.length;   // daten ist ein Suffix von alle
+      const maDefs = [
+        { pfad: "sma50-path",  check: "sma50-check",  legende: "sma50-legend",  serie: berechneSMA(alleVals, 50)  },
+        { pfad: "sma200-path", check: "sma200-check", legende: "sma200-legend", serie: berechneSMA(alleVals, 200) },
+        { pfad: "ema20-path",  check: "ema20-check",  legende: "ema20-legend",  serie: berechneEMA(alleVals, 20)  },
+      ];
+      maDefs.forEach(ma => ma.an = document.getElementById(ma.check).checked);
+
+      // Y-Bereich: bei aktiven Bändern/Durchschnitten auch deren Werte
+      // einbeziehen, damit nichts abgeschnitten wird.
       let alleWerte = vals.slice();
       if (bbAn) alleWerte = alleWerte.concat(bb.oben.filter(v => v != null), bb.unten.filter(v => v != null));
+      maDefs.forEach(ma => {
+        if (ma.an) alleWerte = alleWerte.concat(
+          ma.serie.slice(offset, offset + daten.length).filter(v => v != null));
+      });
       const vMin = Math.min(...alleWerte), vMax = Math.max(...alleWerte);
       const pad  = (vMax - vMin) * 0.05 || 1;
       const yMin = vMin - pad, yMax = vMax + pad;
@@ -451,6 +556,20 @@
       document.getElementById("legende").querySelector(".bb-legend")
         .classList.toggle("aus", !bbAn);
 
+      // ── Gleitende Durchschnitte zeichnen ──
+      for (const ma of maDefs) {
+        const el = document.getElementById(ma.pfad);
+        const idx = [];
+        if (ma.an)
+          for (let i = 0; i < daten.length; i++)
+            if (ma.serie[offset + i] != null) idx.push(i);
+        const sichtbar = ma.an && idx.length > 1;
+        if (sichtbar)
+          el.setAttribute("d", "M" + idx.map(i => `${xs[i]},${yS(ma.serie[offset + i])}`).join("L"));
+        el.style.display = sichtbar ? "block" : "none";
+        document.getElementById(ma.legende).classList.toggle("aus", !sichtbar);
+      }
+
       const hit = document.getElementById("hit-area");
       hit.setAttribute("x", ML); hit.setAttribute("y", MT);
       hit.setAttribute("width", CW); hit.setAttribute("height", CH);
@@ -491,6 +610,7 @@
       document.getElementById("chart-info").innerHTML =
         `${daten[0].datum} → ${daten.at(-1).datum} &nbsp;|&nbsp; ` +
         `<span style="color:${delta>=0?'#6bff8e':'#ff6b6b'}">${sign}${pct}%</span>`;
+      zeigeStats("chart-stats", vals, "Mittelwerte — angezeigter Zeitraum");
     }
 
     window.addEventListener("resize", () => {

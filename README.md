@@ -1,6 +1,6 @@
-# dax-kurse
+# aktien-kurse
 
-Lädt historische DAX-Kurse von Yahoo Finance und zeigt sie als Tabelle und als interaktives Chart im Browser an.
+Lädt historische Kurse verschiedener Werte (DAX, S&P 500, Apple, Tesla, Bitcoin …) von Yahoo Finance und zeigt sie als Tabelle und als interaktives Chart im Browser an.
 
 ## Installation
 
@@ -24,7 +24,9 @@ pip install -r requirements.txt
 
 3. Im Browser öffnen: [http://localhost:8000](http://localhost:8000)
 
-Im Tab **Tabelle** bzw. **Chart** auf „Daten laden" klicken.
+Oben in der Ladeleiste einen **Wert** (z. B. DAX, Apple, Bitcoin) und den **Zeitraum** wählen, dann auf „Daten laden" klicken. Tabelle und Chart zeigen jeweils den gewählten Wert.
+
+Weitere Symbole lassen sich in `index.html` im `<select id="symbol">` ergänzen — jedes gültige [Yahoo-Finance-Symbol](https://finance.yahoo.com/) funktioniert (z. B. `NVDA`, `^GSPC`, `EURUSD=X`).
 
 ## Dateien
 
