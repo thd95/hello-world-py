@@ -1,6 +1,6 @@
 # aktien-kurse
 
-Lädt historische Kurse verschiedener Werte (DAX, S&P 500, Apple, Tesla, Bitcoin …) von Yahoo Finance und zeigt sie als Tabelle und als interaktives Chart im Browser an.
+Lädt historische Kurse verschiedener Werte (DAX, S&P 500, Apple, Tesla, Bitcoin …) von Yahoo Finance und zeigt sie als Tabelle und als interaktives Chart im Browser an. Im Menüpunkt **Simulation** lassen sich Handelsstrategien (SMA-Kreuzung, Stop-Loss/Take-Profit, Buy & Hold) auf den historischen Kursen durchspielen — mit gespeicherten Tagesendständen, Trades und Kapitalverlaufs-Chart je Lauf.
 
 ## Installation
 
@@ -10,7 +10,7 @@ pip install -r requirements.txt
 
 ## Verwendung
 
-1. Kursdaten von Yahoo Finance laden (erzeugt `dax_data.json`):
+1. Optional: Kursdaten von Yahoo Finance in die lokale Datenbank (`kurse.db`) vorladen — der Server lädt fehlende Zeiträume sonst bei der ersten Anfrage selbst nach:
 
    ```bash
    python fetch_dax.py
@@ -33,6 +33,10 @@ Weitere Symbole lassen sich in `index.html` im `<select id="symbol">` ergänzen 
 - `fetch_dax.py` — lädt die DAX-Eröffnungskurse via `yfinance`
 - `server.py` — einfacher lokaler HTTP-Server
 - `index.html` — Anzeige als Tabelle und interaktives Liniendiagramm
+
+## Für Entwickler
+
+Architektur, Datenmodell, API-Referenz und Erweiterungspunkte: siehe [DEVELOPER.md](DEVELOPER.md).
 
 ## Lizenz
 

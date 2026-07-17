@@ -1,5 +1,8 @@
-# Generierte DAX-Daten (mit fetch_dax.py erzeugen)
+# Generierte DAX-Daten (Altformat)
 dax_data.json
+
+# Lokale Datenbank
+kurse.db
 
 # Python
 __pycache__/
