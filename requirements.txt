@@ -1,2 +1,2 @@
-yfinance
-SQLAlchemy
+yfinance==1.5.1
+SQLAlchemy==2.0.51

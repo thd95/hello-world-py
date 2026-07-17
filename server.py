@@ -16,11 +16,13 @@ Dann im Browser öffnen: http://localhost:8000
 """
 import http.server
 import json
-import socketserver
 from urllib.parse import urlparse, parse_qs
 
 from db import fuege_wert_hinzu, hole_kurse, init_db, liste_werte
 
+# Nur auf localhost lauschen — die Anwendung ist nicht für den Netzzugriff
+# gedacht (keine Authentifizierung).
+HOST = "127.0.0.1"
 PORT = 8000
 
 
@@ -99,6 +101,8 @@ class Handler(http.server.SimpleHTTPRequestHandler):
 
 init_db()
 
-with socketserver.TCPServer(("", PORT), Handler) as httpd:
+# ThreadingHTTPServer: ein langsamer Yahoo-Abruf blockiert so nicht die
+# übrigen Anfragen (db.py öffnet pro Aufruf eine eigene Session).
+with http.server.ThreadingHTTPServer((HOST, PORT), Handler) as httpd:
     print(f"Server läuft auf http://localhost:{PORT}  —  Strg+C zum Beenden")
     httpd.serve_forever()

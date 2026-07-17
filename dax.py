@@ -1,8 +1,8 @@
 """Gemeinsame DAX-Ladelogik — der reine Zugriff auf Yahoo Finance.
 
 Die Cache- und Datenbanklogik liegt in db.py; hier steht nur das eigentliche
-Abholen der Kurse. lade_dax() liefert fertig formatierte Strings (für CLI/JSON),
-lade_dax_roh() liefert echte date-Objekte (für die Datenbank)."""
+Abholen der Kurse. lade_dax_roh() liefert echte date-Objekte für die
+Datenbankschicht."""
 
 from datetime import date
 
@@ -34,16 +34,3 @@ def hole_name(symbol: str) -> str | None:
         return info.get("shortName") or info.get("longName")
     except Exception:
         return None
-
-
-def lade_dax(start: str, end: str, symbol: str = "^GDAXI") -> list[dict]:
-    """
-    Wie lade_dax_roh(), aber fertig formatiert für die Ausgabe.
-
-    Rückgabe: Liste von {"datum": "TT.MM.JJJJ", "eroeffnung": float},
-              aufsteigend nach Datum sortiert.
-    """
-    return [
-        {"datum": datum.strftime("%d.%m.%Y"), "eroeffnung": eroeffnung}
-        for datum, eroeffnung in lade_dax_roh(start, end, symbol)
-    ]
