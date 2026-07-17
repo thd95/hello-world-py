@@ -1,6 +1,6 @@
 # aktien-kurse
 
-Lädt historische Kurse verschiedener Werte (DAX, S&P 500, Apple, Tesla, Bitcoin …) von Yahoo Finance und zeigt sie als Tabelle und als interaktives Chart im Browser an.
+Lädt historische Kurse verschiedener Werte (DAX, S&P 500, Apple, Tesla, Bitcoin …) von Yahoo Finance und zeigt sie als Tabelle und als interaktives Chart im Browser an. Im Menüpunkt **Simulation** lassen sich Handelsstrategien (SMA-Kreuzung, Stop-Loss/Take-Profit, Buy & Hold) auf den historischen Kursen durchspielen — mit gespeicherten Tagesendständen, Trades und Kapitalverlaufs-Chart je Lauf.
 
 ## Installation
 

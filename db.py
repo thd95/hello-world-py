@@ -177,9 +177,9 @@ def fuege_wert_hinzu(symbol: str, name: str = "",
             "einheit": einheit, "einheit_lang": einheit_lang}
 
 
-def hole_kurse(start: str, end: str, symbol: str = "^GDAXI") -> list[dict]:
+def hole_kurse_roh(start: str, end: str, symbol: str = "^GDAXI") -> list[tuple[date, float]]:
     """
-    Liefert die Eröffnungskurse eines Zeitraums (Cache mit Nachladen).
+    Liefert die Eröffnungskurse eines Zeitraums als Rohdaten (Cache mit Nachladen).
 
     start, end: Datum im Format JJJJ-MM-TT (end ist ausschließend, wie bei Yahoo)
 
@@ -187,8 +187,7 @@ def hole_kurse(start: str, end: str, symbol: str = "^GDAXI") -> list[dict]:
     die Cache-Abdeckung des Werts entsprechend erweitert. Ausgeliefert wird immer
     aus der Datenbank.
 
-    Rückgabe: Liste von {"datum": "TT.MM.JJJJ", "eroeffnung": float},
-              aufsteigend nach Datum sortiert.
+    Rückgabe: Liste von (datum, eroeffnung), aufsteigend nach Datum sortiert.
     """
     start_d = datetime.strptime(start, "%Y-%m-%d").date()
     end_d   = datetime.strptime(end,   "%Y-%m-%d").date()
@@ -217,7 +216,17 @@ def hole_kurse(start: str, end: str, symbol: str = "^GDAXI") -> list[dict]:
             .order_by(Kurs.datum)
         ).all()
 
-        return [
-            {"datum": k.datum.strftime("%d.%m.%Y"), "eroeffnung": k.eroeffnung}
-            for k in kurse
-        ]
+        return [(k.datum, k.eroeffnung) for k in kurse]
+
+
+def hole_kurse(start: str, end: str, symbol: str = "^GDAXI") -> list[dict]:
+    """
+    Wie hole_kurse_roh(), aber fertig formatiert für die API.
+
+    Rückgabe: Liste von {"datum": "TT.MM.JJJJ", "eroeffnung": float},
+              aufsteigend nach Datum sortiert.
+    """
+    return [
+        {"datum": datum.strftime("%d.%m.%Y"), "eroeffnung": eroeffnung}
+        for datum, eroeffnung in hole_kurse_roh(start, end, symbol)
+    ]

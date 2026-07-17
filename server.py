@@ -10,6 +10,13 @@ Lokaler HTTP-Server für die Kurs-Anwendung.
            Alle Werte der Datenbank (Symbol, Name, Einheit, Cache-Stand).
       POST /api/werte   Body: {"symbol": …, "name": …, "einheit": …, "einheit_lang": …}
            Legt einen neuen Wert an — nur wenn Yahoo Finance das Symbol kennt.
+      GET  /api/simulationen
+           Alle gespeicherten Simulationsläufe (Kennzahlen, ohne Tagesdaten).
+      GET  /api/simulationen/<id>
+           Ein Lauf im Detail: Konfiguration, Trades, Tagesendstände.
+      POST /api/simulationen
+           Body: Simulations-Konfiguration (siehe simulation.SimulationsEngine).
+           Führt den Lauf sofort aus, speichert ihn und liefert die Kennzahlen.
 
 Aufruf: python server.py
 Dann im Browser öffnen: http://localhost:8000
@@ -19,6 +26,7 @@ import json
 from urllib.parse import urlparse, parse_qs
 
 from db import fuege_wert_hinzu, hole_kurse, init_db, liste_werte
+from simulation import hole_simulation, liste_simulationen, starte_simulation
 
 # Nur auf localhost lauschen — die Anwendung ist nicht für den Netzzugriff
 # gedacht (keine Authentifizierung).
@@ -46,12 +54,34 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             except Exception as e:
                 self.send_json({"fehler": str(e)}, 500)
             return
+        if parsed.path == "/api/simulationen":
+            try:
+                self.send_json(liste_simulationen(), 200)
+            except Exception as e:
+                self.send_json({"fehler": str(e)}, 500)
+            return
+        if parsed.path.startswith("/api/simulationen/"):
+            try:
+                sim_id = int(parsed.path.rsplit("/", 1)[1])
+            except ValueError:
+                self.send_json({"fehler": "Ungültige Simulations-ID."}, 400)
+                return
+            try:
+                sim = hole_simulation(sim_id)
+                if sim is None:
+                    self.send_json({"fehler": f"Simulation {sim_id} nicht gefunden."}, 404)
+                else:
+                    self.send_json(sim, 200)
+            except Exception as e:
+                self.send_json({"fehler": str(e)}, 500)
+            return
 
         # ── sonst: statische Dateien wie gewohnt ──
         super().do_GET()
 
     def do_POST(self):
-        if urlparse(self.path).path != "/api/werte":
+        pfad = urlparse(self.path).path
+        if pfad not in ("/api/werte", "/api/simulationen"):
             self.send_json({"fehler": "Unbekannter Endpunkt."}, 404)
             return
 
@@ -63,13 +93,16 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             return
 
         try:
-            wert = fuege_wert_hinzu(
-                body.get("symbol", ""),
-                body.get("name", ""),
-                body.get("einheit", ""),
-                body.get("einheit_lang", ""),
-            )
-            self.send_json(wert, 201)
+            if pfad == "/api/werte":
+                antwort = fuege_wert_hinzu(
+                    body.get("symbol", ""),
+                    body.get("name", ""),
+                    body.get("einheit", ""),
+                    body.get("einheit_lang", ""),
+                )
+            else:
+                antwort = starte_simulation(body)
+            self.send_json(antwort, 201)
         except ValueError as e:
             self.send_json({"fehler": str(e)}, 400)
         except Exception as e:

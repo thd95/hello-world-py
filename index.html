@@ -103,12 +103,12 @@
       box-shadow: 0 2px 10px rgba(31,37,55,0.05);
     }
     .ladeleiste label { color: var(--text-mittel); font-size: 0.82rem; font-weight: 600; }
-    input[type="date"], input[type="text"] {
+    input[type="date"], input[type="text"], input[type="number"] {
       background: #fff; border: 1px solid var(--rand); border-radius: 8px;
       color: var(--text); font-family: inherit; font-size: 0.85rem;
       padding: 0.35rem 0.5rem; outline: none;
     }
-    input[type="date"]:focus, input[type="text"]:focus {
+    input[type="date"]:focus, input[type="text"]:focus, input[type="number"]:focus {
       border-color: var(--primaer); box-shadow: 0 0 0 3px rgba(79,70,229,0.15);
     }
     select {
@@ -204,6 +204,16 @@
     }
     .stat .stat-label { font-size: 0.7rem; color: var(--text-leise); margin-bottom: 0.15rem; }
     .stat .stat-wert  { font-size: 0.92rem; font-weight: 650; color: var(--kurs); font-variant-numeric: tabular-nums; }
+
+    /* ── Simulation ── */
+    .klick-zeile { cursor: pointer; }
+    #sim-detail { margin-top: 1.4rem; }
+    #sim-verlauf {
+      background: var(--karte); border: 1px solid var(--rand); border-radius: 12px;
+      box-shadow: 0 2px 10px rgba(31,37,55,0.05);
+      padding: 1rem 1rem 0.6rem;
+    }
+    #sim-verlauf svg { display: block; width: 100%; }
   </style>
 </head>
 <body>
@@ -213,6 +223,7 @@
     <div class="brand"><span class="logo">📈</span>Kursmonitor</div>
     <nav class="menu">
       <button class="menu-item aktiv" onclick="zeigeMenue('kurse', this)">Kurse</button>
+      <button class="menu-item" onclick="zeigeMenue('simulation', this)">Simulation</button>
       <button class="menu-item" onclick="zeigeMenue('verwaltung', this)">Verwaltung</button>
     </nav>
   </header>
@@ -401,6 +412,106 @@
 
   </section>
 
+  <!-- ═══ Menüpunkt 3: Simulation (Tabs: Neuer Lauf, Läufe) ═══ -->
+  <section id="menu-simulation" class="menu-section">
+
+    <h1>Simulation</h1>
+    <p class="subtitle">Handelsstrategien auf historischen Kursen durchspielen — gehandelt wird in USD</p>
+
+    <div class="tabs">
+      <button class="tab aktiv" onclick="zeigeTab('sim-neu', this)">🚀 Neuer Lauf</button>
+      <button class="tab" onclick="zeigeTab('sim-laeufe', this)">📊 Läufe</button>
+    </div>
+
+    <!-- Tab 3a: Neue Simulation konfigurieren und starten -->
+    <div id="panel-sim-neu" class="panel aktiv">
+      <div class="ladeleiste">
+        <label for="sim-symbol">Wert</label>
+        <select id="sim-symbol"></select>
+        <label for="sim-von">Von</label>
+        <input type="date" id="sim-von" value="2020-01-01">
+        <label for="sim-bis">Bis</label>
+        <input type="date" id="sim-bis" value="2026-07-01">
+        <label for="sim-kapital">Kapital</label>
+        <input type="number" id="sim-kapital" value="10000" min="1" step="100" style="width:6.5rem">
+        <label>USD</label>
+      </div>
+      <div class="ladeleiste">
+        <label for="sim-kauf-typ">Kauf-Trigger</label>
+        <select id="sim-kauf-typ" onchange="zeigeSimFelder()">
+          <option value="sma_kreuzung">Kurs kreuzt SMA nach oben</option>
+          <option value="immer">Sofort kaufen (Buy &amp; Hold)</option>
+        </select>
+        <span id="sim-kauf-felder">
+          <label for="sim-kauf-periode">Periode</label>
+          <input type="number" id="sim-kauf-periode" value="200" min="2" style="width:4.5rem">
+        </span>
+        <label for="sim-verkauf-typ">Verkauf-Trigger</label>
+        <select id="sim-verkauf-typ" onchange="zeigeSimFelder()">
+          <option value="sma_kreuzung">Kurs kreuzt SMA nach unten</option>
+          <option value="stop_take">Stop-Loss / Take-Profit</option>
+          <option value="nie">Nie verkaufen (halten)</option>
+        </select>
+        <span id="sim-verkauf-felder-sma">
+          <label for="sim-verkauf-periode">Periode</label>
+          <input type="number" id="sim-verkauf-periode" value="200" min="2" style="width:4.5rem">
+        </span>
+        <span id="sim-verkauf-felder-st" style="display:none">
+          <label for="sim-stop">Stop-Loss&nbsp;%</label>
+          <input type="number" id="sim-stop" value="10" min="0" step="0.5" style="width:4.5rem">
+          <label for="sim-take">Take-Profit&nbsp;%</label>
+          <input type="number" id="sim-take" value="20" min="0" step="0.5" style="width:4.5rem">
+        </span>
+        <button class="lade-btn" onclick="starteSimulation()">Simulation starten</button>
+        <span id="sim-status" class="dax-status" style="margin:0"></span>
+      </div>
+      <div class="dax-info">
+        Die Engine läuft Tag für Tag über die Eröffnungskurse: ohne Position wird der
+        Kauf-Trigger geprüft (gekauft wird mit dem gesamten Kapital), mit offener Position
+        der Verkauf-Trigger. Jeder Tagesendstand wird gespeichert. Vereinfachungen:
+        Bruchteils-Anteile, keine Gebühren, Ausführung zum Eröffnungskurs des Signaltags.
+      </div>
+    </div>
+
+    <!-- Tab 3b: Gespeicherte Läufe + Detailansicht -->
+    <div id="panel-sim-laeufe" class="panel">
+      <div class="tabelle-wrapper">
+        <table>
+          <thead><tr>
+            <th>Name</th><th>Zeitraum</th>
+            <th style="text-align:right">Kapital</th>
+            <th style="text-align:right">Endstand</th>
+            <th style="text-align:right">Rendite</th>
+            <th style="text-align:right">Trades</th>
+          </tr></thead>
+          <tbody id="sim-tbody">
+            <tr><td colspan="6" class="kein-daten">Noch keine Simulationsläufe</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="dax-info">Zeile anklicken, um Kapitalverlauf und Trades zu sehen.</div>
+
+      <div id="sim-detail" style="display:none">
+        <div class="stats" id="sim-detail-stats"></div>
+        <div class="stats-titel">Kapitalverlauf (Tagesendstände)</div>
+        <div id="sim-verlauf"></div>
+        <div class="stats-titel">Trades</div>
+        <div class="tabelle-wrapper" style="max-height:300px">
+          <table>
+            <thead><tr>
+              <th>Datum</th><th>Typ</th>
+              <th style="text-align:right">Kurs</th>
+              <th style="text-align:right">Anteile</th>
+              <th style="text-align:right">Betrag (USD)</th>
+            </tr></thead>
+            <tbody id="sim-trades-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+  </section>
+
   </main>
 
   <script>
@@ -422,6 +533,7 @@
       document.querySelectorAll(".menu-item").forEach(b => b.classList.remove("aktiv"));
       btn.classList.add("aktiv");
       if (name === "verwaltung") ladeWerte();
+      if (name === "simulation") { ladeWerte(); ladeSimulationen(); }
       // Zurück zu „Kurse": Chart ggf. neu zeichnen — im versteckten Zustand
       // hätte es keine Breite gehabt.
       if (name === "kurse" && daxDaten
@@ -454,6 +566,14 @@
           `<option value="${escapeHtml(w.symbol)}" data-einheit="${escapeHtml(w.einheit)}" data-einheit-lang="${escapeHtml(w.einheit_lang)}">${escapeHtml(w.name)}</option>`
         ).join("");
         if ([...sel.options].some(o => o.value === auswahl)) sel.value = auswahl;
+
+        // Simulations-Dropdown mit denselben Werten befüllen
+        const simSel = document.getElementById("sim-symbol");
+        const simAuswahl = simSel.value;
+        simSel.innerHTML = werte.map(w =>
+          `<option value="${escapeHtml(w.symbol)}">${escapeHtml(w.name)}</option>`
+        ).join("");
+        if ([...simSel.options].some(o => o.value === simAuswahl)) simSel.value = simAuswahl;
 
         // Tabelle im Symbollisten-Tab
         document.getElementById("symbole-tbody").innerHTML = werte.map(w => `
@@ -505,6 +625,231 @@
         status.className = "dax-status fehler";
         status.textContent = `✗ ${err.message}`;
       }
+    }
+
+    /* ═══ Simulation ═══ */
+
+    // Parameterfelder passend zum gewählten Trigger-Typ ein-/ausblenden
+    function zeigeSimFelder() {
+      const kauf    = document.getElementById("sim-kauf-typ").value;
+      const verkauf = document.getElementById("sim-verkauf-typ").value;
+      document.getElementById("sim-kauf-felder").style.display =
+        kauf === "sma_kreuzung" ? "contents" : "none";
+      document.getElementById("sim-verkauf-felder-sma").style.display =
+        verkauf === "sma_kreuzung" ? "contents" : "none";
+      document.getElementById("sim-verkauf-felder-st").style.display =
+        verkauf === "stop_take" ? "contents" : "none";
+    }
+
+    // Kurzbeschreibung einer Trigger-Konfiguration für die Läufe-Tabelle
+    function beschreibeTrigger(t) {
+      if (!t || !t.typ) return "—";
+      switch (t.typ) {
+        case "sma_kreuzung": return `SMA-${t.periode ?? 200}-Kreuzung`;
+        case "immer":        return "Sofort kaufen";
+        case "nie":          return "Nie verkaufen";
+        case "stop_take": {
+          const teile = [];
+          if (t.stop_prozent) teile.push(`Stop −${t.stop_prozent}%`);
+          if (t.take_prozent) teile.push(`Take +${t.take_prozent}%`);
+          return teile.join(" / ") || "Stop/Take";
+        }
+        default: return t.typ;
+      }
+    }
+
+    // Konfiguration aus dem Formular bauen, Lauf starten, Ergebnis anzeigen
+    async function starteSimulation() {
+      const status  = document.getElementById("sim-status");
+      const kaufTyp    = document.getElementById("sim-kauf-typ").value;
+      const verkaufTyp = document.getElementById("sim-verkauf-typ").value;
+
+      const kauf_trigger = { typ: kaufTyp };
+      if (kaufTyp === "sma_kreuzung")
+        kauf_trigger.periode = +document.getElementById("sim-kauf-periode").value;
+
+      const verkauf_trigger = { typ: verkaufTyp };
+      if (verkaufTyp === "sma_kreuzung")
+        verkauf_trigger.periode = +document.getElementById("sim-verkauf-periode").value;
+      if (verkaufTyp === "stop_take") {
+        const stop = parseFloat(document.getElementById("sim-stop").value);
+        const take = parseFloat(document.getElementById("sim-take").value);
+        if (stop > 0) verkauf_trigger.stop_prozent = stop;
+        if (take > 0) verkauf_trigger.take_prozent = take;
+      }
+
+      const config = {
+        symbol:   document.getElementById("sim-symbol").value,
+        start:    document.getElementById("sim-von").value,
+        ende:     document.getElementById("sim-bis").value,
+        kapital:  parseFloat(document.getElementById("sim-kapital").value),
+        waehrung: "USD",
+        kauf_trigger, verkauf_trigger,
+        name: `${document.getElementById("sim-symbol").selectedOptions[0]?.textContent}: `
+            + `${beschreibeTrigger(kauf_trigger)} → ${beschreibeTrigger(verkauf_trigger)}`,
+      };
+
+      status.className = "dax-status";
+      status.textContent = "Simulation läuft …";
+      try {
+        const res = await fetch("/api/simulationen", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(config),
+        });
+        const antwort = await res.json();
+        if (!res.ok) throw new Error(antwort.fehler || `HTTP ${res.status}`);
+
+        status.className = "dax-status ok";
+        status.textContent = `✓ Endstand ${antwort.endstand.toLocaleString("de-DE",
+          {minimumFractionDigits:2})} USD (${antwort.rendite_prozent > 0 ? "+" : ""}`
+          + `${antwort.rendite_prozent.toLocaleString("de-DE")} %, ${antwort.anzahl_trades} Trades)`;
+
+        // Zum Läufe-Tab wechseln und das Ergebnis direkt im Detail zeigen
+        await ladeSimulationen();
+        document.querySelector("#menu-simulation .tabs .tab:nth-child(2)").click();
+        zeigeSimDetail(antwort.id);
+      } catch (err) {
+        status.className = "dax-status fehler";
+        status.textContent = `✗ ${err.message}`;
+      }
+    }
+
+    // Alle gespeicherten Läufe in die Tabelle laden
+    async function ladeSimulationen() {
+      const tbody = document.getElementById("sim-tbody");
+      try {
+        const res = await fetch("/api/simulationen");
+        const laeufe = await res.json();
+        if (!res.ok) throw new Error(laeufe.fehler || `HTTP ${res.status}`);
+
+        tbody.innerHTML = laeufe.map(l => {
+          const farbe = l.rendite_prozent >= 0 ? "#16a34a" : "#dc2626";
+          const vz = l.rendite_prozent > 0 ? "+" : "";
+          return `
+          <tr class="klick-zeile" onclick="zeigeSimDetail(${l.id})">
+            <td>${escapeHtml(l.name)}</td>
+            <td>${escapeHtml(l.start)} – ${escapeHtml(l.ende)}</td>
+            <td class="kurs">${l.kapital.toLocaleString("de-DE")}</td>
+            <td class="kurs">${l.endstand.toLocaleString("de-DE",{minimumFractionDigits:2})}</td>
+            <td style="text-align:right;font-weight:600;color:${farbe}">${vz}${l.rendite_prozent.toLocaleString("de-DE")} %</td>
+            <td style="text-align:right">${l.anzahl_trades}</td>
+          </tr>`;
+        }).join("")
+          || `<tr><td colspan="6" class="kein-daten">Noch keine Simulationsläufe</td></tr>`;
+      } catch (err) {
+        tbody.innerHTML =
+          `<tr><td colspan="6" class="kein-daten">Fehler beim Laden: ${escapeHtml(err.message)}</td></tr>`;
+      }
+    }
+
+    // Detailansicht eines Laufs: Kennzahlen, Kapitalverlauf, Trades
+    async function zeigeSimDetail(id) {
+      try {
+        const res = await fetch(`/api/simulationen/${id}`);
+        const d = await res.json();
+        if (!res.ok) throw new Error(d.fehler || `HTTP ${res.status}`);
+
+        const farbe = d.rendite_prozent >= 0 ? "#16a34a" : "#dc2626";
+        const vz = d.rendite_prozent > 0 ? "+" : "";
+        const g = (v) => v.toLocaleString("de-DE", {minimumFractionDigits:2, maximumFractionDigits:2});
+        document.getElementById("sim-detail-stats").innerHTML = [
+          ["Lauf", escapeHtml(d.name)],
+          ["Startkapital", `${g(d.kapital)} ${escapeHtml(d.waehrung)}`],
+          ["Endstand", `${g(d.endstand)} ${escapeHtml(d.waehrung)}`],
+          ["Rendite", `<span style="color:${farbe}">${vz}${d.rendite_prozent.toLocaleString("de-DE")} %</span>`],
+          ["Trades", d.anzahl_trades],
+          ["Kauf-Trigger", escapeHtml(beschreibeTrigger(d.kauf_trigger))],
+          ["Verkauf-Trigger", escapeHtml(beschreibeTrigger(d.verkauf_trigger))],
+        ].map(([label, wert]) =>
+          `<div class="stat"><div class="stat-label">${label}</div><div class="stat-wert">${wert}</div></div>`
+        ).join("");
+
+        zeichneVerlauf(d.tage, d.kapital, d.trades);
+
+        document.getElementById("sim-trades-tbody").innerHTML = d.trades.map(t => `
+          <tr>
+            <td>${escapeHtml(t.datum)}</td>
+            <td style="font-weight:600;color:${t.typ === "kauf" ? "#16a34a" : "#dc2626"}">${t.typ === "kauf" ? "Kauf" : "Verkauf"}</td>
+            <td class="kurs">${g(t.kurs)}</td>
+            <td style="text-align:right">${t.anteile.toLocaleString("de-DE",{maximumFractionDigits:4})}</td>
+            <td class="kurs">${g(t.betrag)}</td>
+          </tr>`).join("")
+          || `<tr><td colspan="5" class="kein-daten">Keine Trades ausgelöst</td></tr>`;
+
+        const detail = document.getElementById("sim-detail");
+        detail.style.display = "block";
+        detail.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      } catch (err) {
+        alert("Simulation konnte nicht geladen werden: " + err.message);
+      }
+    }
+
+    // Einfaches Verlaufs-Chart der Tagesendstände (mit Startkapital-Referenzlinie
+    // und ▲/▼-Markern an den Kauf-/Verkaufstagen)
+    function zeichneVerlauf(tage, kapital, trades = []) {
+      const wrap = document.getElementById("sim-verlauf");
+      if (!tage.length) { wrap.innerHTML = ""; return; }
+
+      const W = 780, H = 190, ML = 70, MR = 12, MT = 10, MB = 26;
+      const CW = W - ML - MR, CH = H - MT - MB;
+      const werte = tage.map(t => t.endstand);
+      const vMin = Math.min(...werte, kapital), vMax = Math.max(...werte, kapital);
+      const pad  = (vMax - vMin) * 0.06 || 1;
+      const yMin = vMin - pad, yMax = vMax + pad;
+      const x  = i => ML + (i / (tage.length - 1 || 1)) * CW;
+      const y  = v => MT + CH - ((v - yMin) / (yMax - yMin)) * CH;
+      const farbe = werte.at(-1) >= kapital ? "#16a34a" : "#dc2626";
+
+      const pts = werte.map((v, i) => `${x(i)},${y(v)}`).join("L");
+      let gitter = "";
+      for (let i = 0; i <= 4; i++) {
+        const v = yMin + (yMax - yMin) * (i / 4);
+        gitter += `<line x1="${ML}" x2="${ML+CW}" y1="${y(v)}" y2="${y(v)}" stroke="#eef0f7"/>`
+                + `<text x="${ML-8}" y="${y(v)+4}" text-anchor="end" fill="#8a93a6" font-size="11"
+                     font-family="ui-monospace,Consolas,monospace">${Math.round(v).toLocaleString("de-DE")}</text>`;
+      }
+
+      // ▲/▼-Marker an den Trade-Tagen auf der Verlaufslinie; der native
+      // <title> liefert beim Überfahren Datum und Betrag des Trades.
+      const indexNachDatum = new Map(tage.map((t, i) => [t.datum, i]));
+      let marker = "";
+      for (const t of trades) {
+        const i = indexNachDatum.get(t.datum);
+        if (i === undefined) continue;
+        const mx = x(i), my = y(werte[i]);
+        const kauf  = t.typ === "kauf";
+        const titel = `<title>${kauf ? "Kauf" : "Verkauf"} am ${t.datum} — `
+                    + `${t.betrag.toLocaleString("de-DE", {minimumFractionDigits: 2})} USD `
+                    + `(Kurs ${t.kurs.toLocaleString("de-DE", {minimumFractionDigits: 2})})</title>`;
+        marker += kauf
+          ? `<path d="M${mx},${my + 4} L${mx - 5},${my + 12} L${mx + 5},${my + 12} Z"
+               fill="#16a34a" stroke="#fff" stroke-width="0.8">${titel}</path>`
+          : `<path d="M${mx},${my - 4} L${mx - 5},${my - 12} L${mx + 5},${my - 12} Z"
+               fill="#dc2626" stroke="#fff" stroke-width="0.8">${titel}</path>`;
+      }
+
+      wrap.innerHTML = `
+        <svg viewBox="0 0 ${W} ${H}" height="${H}" aria-label="Kapitalverlauf der Simulation">
+          ${gitter}
+          <path d="M${x(0)},${MT+CH} L${pts} L${x(tage.length-1)},${MT+CH} Z"
+                fill="${farbe}" fill-opacity="0.08"/>
+          <line x1="${ML}" x2="${ML+CW}" y1="${y(kapital)}" y2="${y(kapital)}"
+                stroke="#8a93a6" stroke-width="1" stroke-dasharray="5 4"/>
+          <path d="M${pts}" fill="none" stroke="${farbe}" stroke-width="1.6"
+                stroke-linejoin="round" stroke-linecap="round"/>
+          ${marker}
+          <text x="${ML}" y="${H-4}" fill="#8a93a6" font-size="10"
+                font-family="ui-monospace,Consolas,monospace">${tage[0].datum}</text>
+          <text x="${ML+CW}" y="${H-4}" text-anchor="end" fill="#8a93a6" font-size="10"
+                font-family="ui-monospace,Consolas,monospace">${tage.at(-1).datum}</text>
+        </svg>`
+        + (trades.length ? `
+        <div class="legende" style="margin:0.5rem 0 0.2rem">
+          <span><span style="color:#16a34a">▲</span>&nbsp;Kauf</span>
+          <span><span style="color:#dc2626">▼</span>&nbsp;Verkauf</span>
+          <span style="color:var(--text-leise)">Marker überfahren zeigt Details</span>
+        </div>` : "");
     }
 
     /* ── Daten laden (über die API, Zeitraum aus der Ladeleiste) ── */
@@ -889,7 +1234,9 @@
     });
 
     // Beim Start das Dropdown und die Symbolliste aus der Datenbank befüllen
+    // und die Trigger-Parameterfelder passend zur Vorauswahl schalten
     ladeWerte();
+    zeigeSimFelder();
   </script>
 
 </body>

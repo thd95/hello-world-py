@@ -29,22 +29,29 @@ und benötigt daher **Python ≥ 3.10** (getestet mit 3.11).
 ┌─────────────┐   HTTP    ┌─────────────┐          ┌─────────────┐
 │ index.html  │ ────────▶ │  server.py  │ ───────▶ │    db.py    │
 │ (Browser)   │  /api/…   │ HTTP-Server │          │ Cache + ORM │
-└─────────────┘           └─────────────┘          └──────┬──────┘
-                                                    ▲     │ bei Cache-Lücke
-                          ┌─────────────┐           │     ▼
-                          │ fetch_dax.py│ ──────────┘  ┌─────────────┐
-                          │ (CLI)       │              │   dax.py    │
-                          └─────────────┘              │ yfinance    │
-                                                       └──────┬──────┘
-┌─────────────┐                                               ▼
-│  kurse.db   │ ◀── SQLAlchemy ──────────────────      Yahoo Finance
+└─────────────┘           └──────┬──────┘          └──────┬──────┘
+                                 │                  ▲     │ bei Cache-Lücke
+                                 ▼                  │     ▼
+                          ┌─────────────┐           │  ┌─────────────┐
+                          │simulation.py│ ──────────┤  │   dax.py    │
+                          │ Engine      │           │  │ yfinance    │
+                          └──────┬──────┘           │  └──────┬──────┘
+                                 ▼                  │         ▼
+                          ┌─────────────┐           │   Yahoo Finance
+                          │ trigger.py  │           │
+                          │ Bewerter    │  ┌────────┴────┐
+                          └─────────────┘  │ fetch_dax.py│
+┌─────────────┐                            │ (CLI)       │
+│  kurse.db   │ ◀── SQLAlchemy ──────      └─────────────┘
 └─────────────┘
 ```
 
 Die Schichten sind strikt getrennt:
 
 - [dax.py](dax.py) — **reiner Yahoo-Finance-Zugriff**, kennt weder Datenbank noch Server.
-- [db.py](db.py) — **Datenbank- und Cache-Schicht**, einziger Ort mit Geschäftslogik.
+- [db.py](db.py) — **Datenbank- und Cache-Schicht** für die Kurse.
+- [trigger.py](trigger.py) — **Kauf-/Verkauf-Bewerter** der Handelssimulation (reine Logik, keine DB).
+- [simulation.py](simulation.py) — **Simulationsengine** samt Persistenz der Läufe (nutzt db.py und trigger.py).
 - [server.py](server.py) — **dünner HTTP-Adapter**: Routen, JSON-Ein-/Ausgabe, Fehlercodes.
 - [fetch_dax.py](fetch_dax.py) — **CLI-Adapter** auf dieselbe `db.py`-Logik (Vorbefüllen der DB).
 - [index.html](index.html) — komplettes Frontend in einer Datei (HTML + CSS + JS).
@@ -108,14 +115,62 @@ mitgeladen. Das ist bewusst so — ein Intervall pro Wert hält die Logik einfac
 | Funktion | Zweck |
 |----------|-------|
 | `init_db()` | Tabellen anlegen + Standardwerte einfügen (idempotent). Muss vor allem anderen laufen; `server.py` und `fetch_dax.py` rufen sie beim Start auf. |
-| `hole_kurse(start, end, symbol)` | Einstiegspunkt der Anwendung: Kurse mit Cache-Nachladen (siehe oben). |
+| `hole_kurse_roh(start, end, symbol)` | Einstiegspunkt der Anwendung: Kurse mit Cache-Nachladen (siehe oben), als `(date, float)`-Tupel — wird auch von der Simulationsengine genutzt. |
+| `hole_kurse(start, end, symbol)` | Wie `hole_kurse_roh()`, aber formatiert für die API (`TT.MM.JJJJ`). |
 | `liste_werte()` | Alle Werte inkl. `anzahl_kurse` und Cache-Zeitraum (für den „Symbole“-Tab). |
 | `fuege_wert_hinzu(symbol, name, einheit, einheit_lang)` | Neuen Wert anlegen. Validiert das Symbol per Probeabruf (letzte 60 Tage); ohne Name wird der Yahoo-Anzeigename übernommen. Wirft `ValueError` bei leerem, doppeltem oder ungültigem Symbol. |
 
 Interne Helfer: `_hole_oder_lege_wert_an()` (Wert per Symbol finden oder anlegen),
 `_lade_und_speichere()` (Yahoo-Abruf + Duplikat-freies Einfügen).
 
-### 3.3 server.py — HTTP-Server und API
+### 3.3 trigger.py und simulation.py — Handelssimulation
+
+Die Simulation ist in zwei Module geteilt:
+
+**trigger.py** — die Bewerter. Gemeinsame Schnittstelle
+`pruefe(i, kurse, kaufkurs) -> bool`; konfiguriert über `{"typ": …, <parameter>}`.
+
+| Familie | Typ | Bedeutung |
+|---------|-----|-----------|
+| Kauf    | `sma_kreuzung` (`periode`) | Kurs kreuzt SMA(periode) von unten nach oben |
+| Kauf    | `immer` | kauft am ersten möglichen Tag (Buy & Hold) |
+| Verkauf | `sma_kreuzung` (`periode`) | Kurs kreuzt SMA(periode) von oben nach unten |
+| Verkauf | `stop_take` (`stop_prozent`, `take_prozent`) | Verlust-/Gewinnschwelle seit Kauf |
+| Verkauf | `nie` | hält bis zum Ende |
+
+Neue Trigger-Typen werden in `erzeuge_kauf_bewerter()` /
+`erzeuge_verkauf_bewerter()` als weiterer Zweig ergänzt — die Engine bleibt
+unangetastet. `benoetigter_vorlauf()` meldet, wie viele Handelstage
+Vorgeschichte die Trigger vor dem Simulationsstart brauchen (SMA-Perioden).
+
+**simulation.py** — die Engine und die Persistenz:
+
+- `SimulationsEngine(config).laufe()` — der Kern: lädt die Kurse inkl. Vorlauf
+  über `hole_kurse_roh()` (Cache!), läuft **Tag für Tag** über die
+  Eröffnungskurse und befragt die Bewerter: ohne Position den Kauf-Trigger
+  (gekauft wird mit dem gesamten Cash), mit Position den Verkauf-Trigger
+  (verkauft wird alles). Für **jeden Handelstag** wird der Tagesendstand
+  (Cash + Anteile × Kurs) festgehalten.
+- Vereinfachungen (bewusst): Handel nur in **USD** (Feld `waehrung` ist für
+  weitere Währungen vorbereitet, andere Werte werden abgelehnt), teilbare
+  Anteile, keine Gebühren, Ausführung zum Eröffnungskurs des Signaltags.
+- `starte_simulation(config)` (validieren → laufen → speichern),
+  `liste_simulationen()`, `hole_simulation(id)` — die API-Einstiegspunkte.
+
+Datenmodell (zusätzlich zu `wert`/`kurs`):
+
+```
+simulation                          simulations_tag          simulations_trade
+──────────                          ───────────────          ─────────────────
+id, name, symbol                    id, simulation_id FK     id, simulation_id FK
+start, ende (ausschließend)         datum, kurs              datum, typ (kauf|verkauf)
+kapital, waehrung ("USD")           cash, anteile            kurs, anteile, betrag
+kauf_trigger, verkauf_trigger (JSON)  endstand  ← Tagesendstand
+erstellt_am, endstand,
+rendite_prozent, anzahl_trades
+```
+
+### 3.4 server.py — HTTP-Server und API
 
 Basiert auf `http.server.SimpleHTTPRequestHandler` — statische Dateien kommen
 aus dem **aktuellen Arbeitsverzeichnis** (deshalb den Server immer aus dem
@@ -126,7 +181,7 @@ nur auf `127.0.0.1:8000` (Konstanten `HOST`/`PORT`). Der Handler setzt
 
 Start: `python server.py` → http://localhost:8000
 
-### 3.4 fetch_dax.py — CLI zum Vorbefüllen
+### 3.5 fetch_dax.py — CLI zum Vorbefüllen
 
 ```bash
 python fetch_dax.py --symbol AAPL --start 2020-01-01 --end 2026-07-01
@@ -136,7 +191,7 @@ Nutzt exakt dieselbe `hole_kurse()`-Logik wie der Server, d. h. der Aufruf
 befüllt den Cache in `kurse.db`. Standardwerte: `^GDAXI`, `2023-07-01` bis
 `2026-07-01`. Exit-Code 1, wenn keine Daten gefunden wurden.
 
-### 3.5 index.html — Frontend
+### 3.6 index.html — Frontend
 
 Eine Datei, helles Design (CSS-Variablen in `:root`, Akzent Indigo/Sky).
 Zwei Navigationsebenen: ein **Hauptmenü** in der Kopfleiste (`zeigeMenue()`)
@@ -147,6 +202,14 @@ nur ein `panel-<name>`-Div plus einen Tab-Button im jeweiligen `<section>`):
 - Menü **Kurse** (mit der Ladeleiste für Wert/Zeitraum):
   - Tab **Tabelle** — Kursliste mit Statistik (Info-/Stats-Bereich).
   - Tab **Chart** — handgebautes SVG-Liniendiagramm (Details unten).
+- Menü **Simulation**:
+  - Tab **Neuer Lauf** — Konfigurationsformular (Wert, Zeitraum, Kapital,
+    Kauf-/Verkauf-Trigger mit typabhängigen Parameterfeldern, `zeigeSimFelder()`),
+    startet den Lauf per `POST /api/simulationen` (`starteSimulation()`).
+  - Tab **Läufe** — alle gespeicherten Läufe (`ladeSimulationen()`); Klick auf
+    eine Zeile öffnet die Detailansicht (`zeigeSimDetail()`): Kennzahlen-Karten,
+    Kapitalverlaufs-Chart der Tagesendstände (`zeichneVerlauf()`, eigenes
+    kleines SVG mit Startkapital-Referenzlinie) und Trade-Liste.
 - Menü **Verwaltung**:
   - Tab **Symbolliste** — alle Werte aus `GET /api/werte` mit Cache-Stand.
   - Tab **Neues Symbol** — Formular für `POST /api/werte` (`fuegeSymbolHinzu()`).
@@ -219,6 +282,50 @@ Neuen Wert anlegen. Body (JSON): `symbol` (Pflicht, wird upper-gecased),
 Hinweis: Das Anlegen macht einen Probeabruf bei Yahoo (letzte 60 Tage) und
 kann daher 1–2 Sekunden dauern.
 
+### GET /api/simulationen
+
+Alle gespeicherten Simulationsläufe, neueste zuerst — Kennzahlen ohne Tagesdaten:
+
+```
+200 → [{"id": 5, "name": "DAX: SMA-200-Kreuzung → Stop −8% / Take +25%",
+        "symbol": "^GDAXI", "start": "01.01.2018", "ende": "01.07.2026",
+        "kapital": 25000.0, "waehrung": "USD",
+        "kauf_trigger": {"typ": "sma_kreuzung", "periode": 200},
+        "verkauf_trigger": {"typ": "stop_take", "stop_prozent": 8, "take_prozent": 25},
+        "erstellt_am": "17.07.2026 14:02", "endstand": 37946.06,
+        "rendite_prozent": 51.78, "anzahl_trades": 13}, …]
+```
+
+### GET /api/simulationen/&lt;id&gt;
+
+Ein Lauf im Detail: dieselben Kennzahlen plus `trades` (Datum, Typ, Kurs,
+Anteile, Betrag) und `tage` (Datum, Kurs, **Tagesendstand**).
+
+```
+404 → {"fehler": "Simulation 99 nicht gefunden."}
+```
+
+### POST /api/simulationen
+
+Führt einen Simulationslauf aus und speichert ihn. Body = Konfiguration
+(siehe `SimulationsEngine` in [simulation.py](simulation.py)):
+
+```json
+{"symbol": "^GDAXI", "start": "2018-01-01", "ende": "2026-07-01",
+ "kapital": 25000, "waehrung": "USD", "name": "optional",
+ "kauf_trigger":    {"typ": "sma_kreuzung", "periode": 200},
+ "verkauf_trigger": {"typ": "stop_take", "stop_prozent": 8, "take_prozent": 25}}
+```
+
+```
+201 → Kennzahlen wie bei GET /api/simulationen (inkl. vergebener "id")
+400 → {"fehler": "…"}   (ungültige Konfiguration, ValueError aus der Engine)
+```
+
+Fehlende Kurszeiträume werden dabei automatisch von Yahoo nachgeladen
+(inkl. Vorlauf für SMA-Trigger) — der erste Lauf für einen neuen Wert kann
+daher etwas dauern.
+
 ## 5. Entwicklungs-Workflow
 
 ```bash
@@ -257,6 +364,16 @@ Git-Konventionen (aus der Historie): Branches nach dem Muster
 - **Neue Signal-Marker:** `findeKreuzungen(kurse, serie)` ist bewusst generisch —
   für z. B. SMA-50-Kreuzungen dieselbe Funktion mit der SMA-50-Serie aufrufen
   und im Marker-Block von `zeichneChart()` zeichnen (Vorbild: SMA-200-Signale).
+- **Neuer Simulations-Trigger:** Bewerter-Klasse in [trigger.py](trigger.py)
+  schreiben (Schnittstelle `pruefe(i, kurse, kaufkurs)`), in
+  `erzeuge_kauf_bewerter()` bzw. `erzeuge_verkauf_bewerter()` registrieren,
+  ggf. `benoetigter_vorlauf()` erweitern — und im Formular in
+  [index.html](index.html) eine `<option>` plus Parameterfelder ergänzen
+  (`zeigeSimFelder()`, `starteSimulation()`).
+- **Weitere Währungen:** Das Feld `waehrung` ist in Konfiguration und
+  Datenmodell bereits vorhanden; die Engine lehnt derzeit alles außer "USD"
+  ab (eine Stelle in `SimulationsEngine.__init__`). Für echten Mehrwährungs-
+  Handel fehlt vor allem die Kursumrechnung.
 
 ## 7. Bekannte Eigenheiten & Grenzen
 
