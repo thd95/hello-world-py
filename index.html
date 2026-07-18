@@ -216,6 +216,7 @@
     <div class="tabs">
       <button class="tab aktiv" onclick="zeigeTab('sim-neu', this)">🚀 Neuer Lauf</button>
       <button class="tab" onclick="zeigeTab('sim-laeufe', this)">📊 Läufe</button>
+      <button class="tab" onclick="zeigeTab('sim-hilfe', this)">📖 Trigger-Hilfe</button>
     </div>
 
     <!-- Tab 3a: Neue Simulation konfigurieren und starten -->
@@ -257,6 +258,9 @@
           <label for="sim-take">Take-Profit&nbsp;%</label>
           <input type="number" id="sim-take" value="20" min="0" step="0.5" style="width:4.5rem">
         </span>
+        <label for="sim-karenz" title="Handelstage nach jedem Kauf/Verkauf, in denen kein weiterer Trade ausgelöst wird">Karenz&nbsp;(Tage)</label>
+        <input type="number" id="sim-karenz" value="0" min="0" step="1" style="width:4.5rem"
+               title="Handelstage nach jedem Kauf/Verkauf, in denen kein weiterer Trade ausgelöst wird">
         <button class="lade-btn" onclick="starteSimulation()">Simulation starten</button>
         <span id="sim-status" class="dax-status" style="margin:0"></span>
       </div>
@@ -303,6 +307,101 @@
           </table>
         </div>
       </div>
+    </div>
+
+    <!-- Tab 3c: Dokumentation der Trigger und Parameter -->
+    <div id="panel-sim-hilfe" class="panel">
+
+      <div class="stats-titel" style="margin-top:0">Kauf-Trigger — wann wird gekauft?</div>
+      <div class="tabelle-wrapper" style="max-height:none">
+        <table>
+          <thead><tr>
+            <th style="width:230px">Trigger</th>
+            <th style="width:170px">Parameter</th>
+            <th>Wirkung</th>
+          </tr></thead>
+          <tbody>
+            <tr>
+              <td><strong>Kurs kreuzt SMA nach oben</strong></td>
+              <td>Periode (Handelstage)</td>
+              <td>Kauft, wenn der Eröffnungskurs den gleitenden Durchschnitt der letzten
+                  „Periode“ Handelstage <strong>von unten nach oben</strong> durchbricht
+                  (Vortag noch darunter, heute darüber). Klassisches Trendfolge-Einstiegssignal;
+                  die nötige Vorgeschichte wird automatisch mitgeladen, das Signal funktioniert
+                  also schon am ersten Simulationstag.</td>
+            </tr>
+            <tr>
+              <td><strong>Sofort kaufen (Buy &amp; Hold)</strong></td>
+              <td>—</td>
+              <td>Kauft am ersten Handelstag der Simulation mit dem gesamten Kapital.
+                  Zusammen mit „Nie verkaufen“ ergibt das die klassische
+                  Buy-&amp;-Hold-Strategie — nützlich als Vergleichsmaßstab für alles andere.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="stats-titel">Verkauf-Trigger — wann wird verkauft?</div>
+      <div class="tabelle-wrapper" style="max-height:none">
+        <table>
+          <thead><tr>
+            <th style="width:230px">Trigger</th>
+            <th style="width:170px">Parameter</th>
+            <th>Wirkung</th>
+          </tr></thead>
+          <tbody>
+            <tr>
+              <td><strong>Kurs kreuzt SMA nach unten</strong></td>
+              <td>Periode (Handelstage)</td>
+              <td>Verkauft die gesamte Position, wenn der Eröffnungskurs den gleitenden
+                  Durchschnitt <strong>von oben nach unten</strong> durchbricht — das
+                  Gegenstück zum SMA-Kaufsignal (Trendbruch).</td>
+            </tr>
+            <tr>
+              <td><strong>Stop-Loss / Take-Profit</strong></td>
+              <td>Stop-Loss %, Take-Profit %</td>
+              <td>Verkauft, sobald der Kurs seit dem Kauf um mindestens „Stop-Loss %“
+                  <strong>gefallen</strong> oder um mindestens „Take-Profit %“
+                  <strong>gestiegen</strong> ist (Verlustbegrenzung bzw. Gewinnmitnahme).
+                  Ein leeres bzw. auf 0 gesetztes Feld deaktiviert die jeweilige Schwelle —
+                  mindestens eine der beiden muss gesetzt sein.</td>
+            </tr>
+            <tr>
+              <td><strong>Nie verkaufen (halten)</strong></td>
+              <td>—</td>
+              <td>Die Position wird bis zum Ende des Zeitraums gehalten; der Endstand
+                  ergibt sich aus dem Kurs des letzten Handelstags.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="stats-titel">Karenz (Tage)</div>
+      <div class="tabelle-wrapper" style="max-height:none">
+        <table>
+          <tbody>
+            <tr>
+              <td style="width:230px"><strong>Sperrfrist nach jedem Trade</strong></td>
+              <td>Nach jedem ausgeführten Kauf <em>oder</em> Verkauf pausiert die Simulation
+                  für die angegebene Zahl von <strong>Handelstagen</strong>: In dieser Zeit
+                  wird weder der Kauf- noch der Verkauf-Trigger geprüft. 0 bedeutet keine
+                  Karenz. Sinnvoll gegen hektisches Hin und Her („Whipsaw“), wenn der Kurs
+                  mehrfach kurz hintereinander um den gleitenden Durchschnitt pendelt.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="stats-titel">So läuft die Simulation ab</div>
+      <div class="dax-info" style="margin-top:0.4rem">
+        Die Engine geht Tag für Tag über die Eröffnungskurse des gewählten Zeitraums.
+        Ohne offene Position wird der Kauf-Trigger geprüft — feuert er, wird das gesamte
+        verfügbare Kapital investiert. Mit offener Position wird der Verkauf-Trigger
+        geprüft — feuert er, wird die gesamte Position verkauft. Ausführung jeweils zum
+        Eröffnungskurs des Signaltags. Vereinfachungen: Bruchteils-Anteile erlaubt,
+        keine Gebühren oder Spreads, gehandelt wird in USD.
+      </div>
+
     </div>
 
   </section>
@@ -481,6 +580,7 @@
         start:    document.getElementById("sim-von").value,
         ende:     document.getElementById("sim-bis").value,
         kapital:  parseFloat(document.getElementById("sim-kapital").value),
+        karenz_tage: parseInt(document.getElementById("sim-karenz").value, 10) || 0,
         waehrung: "USD",
         kauf_trigger, verkauf_trigger,
         name: `${document.getElementById("sim-symbol").selectedOptions[0]?.textContent}: `
@@ -559,6 +659,7 @@
           ["Trades", d.anzahl_trades],
           ["Kauf-Trigger", escapeHtml(beschreibeTrigger(d.kauf_trigger))],
           ["Verkauf-Trigger", escapeHtml(beschreibeTrigger(d.verkauf_trigger))],
+          ["Karenz", `${d.karenz_tage ?? 0} Handelstage`],
         ].map(([label, wert]) =>
           `<div class="stat"><div class="stat-label">${label}</div><div class="stat-wert">${wert}</div></div>`
         ).join("");

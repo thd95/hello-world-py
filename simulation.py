@@ -44,6 +44,10 @@ class Simulation(Base):
     ende:    Mapped[date]  = mapped_column(Date)          # ausschließend, wie überall
     kapital: Mapped[float] = mapped_column(Float)
 
+    # Karenzzeit in Handelstagen: nach jedem ausgeführten Trade werden für so
+    # viele Tage weder Kauf- noch Verkauf-Trigger geprüft (0 = keine Karenz).
+    karenz_tage: Mapped[int] = mapped_column(default=0)
+
     # Aktuell wird immer in USD gehandelt; das Feld hält die Tür für weitere
     # Währungen offen.
     waehrung: Mapped[str] = mapped_column(String, default="USD")
@@ -97,6 +101,23 @@ class SimulationsTrade(Base):
     simulation: Mapped["Simulation"] = relationship(back_populates="trades")
 
 
+def _migriere_karenz_spalte() -> None:
+    """Ergänzt 'karenz_tage' in bestehenden Datenbanken (Mini-Migration).
+
+    create_all() legt nur fehlende Tabellen an, ergänzt aber keine Spalten —
+    eine vor dieser Erweiterung angelegte kurse.db braucht daher das ALTER.
+    Läuft die Datei frisch an (Tabelle existiert noch nicht), passiert nichts.
+    """
+    with engine.begin() as conn:
+        spalten = [zeile[1] for zeile in conn.exec_driver_sql("PRAGMA table_info(simulation)")]
+        if spalten and "karenz_tage" not in spalten:
+            conn.exec_driver_sql(
+                "ALTER TABLE simulation ADD COLUMN karenz_tage INTEGER NOT NULL DEFAULT 0")
+
+
+_migriere_karenz_spalte()
+
+
 # ── Engine ───────────────────────────────────────────────────────────────────
 
 class SimulationsEngine:
@@ -106,6 +127,8 @@ class SimulationsEngine:
       symbol           Yahoo-Finance-Symbol, z. B. "^GDAXI"
       start, ende      Zeitraum im Format JJJJ-MM-TT (ende ausschließend)
       kapital          Startkapital (> 0)
+      karenz_tage      optional (Standard 0): Handelstage nach jedem Trade,
+                       in denen kein weiterer Kauf/Verkauf geprüft wird
       waehrung         optional, aktuell nur "USD"
       kauf_trigger     z. B. {"typ": "sma_kreuzung", "periode": 200}
                        oder  {"typ": "immer"}
@@ -136,6 +159,13 @@ class SimulationsEngine:
             raise ValueError("Kapital muss eine Zahl sein.")
         if self.kapital <= 0:
             raise ValueError("Kapital muss größer als 0 sein.")
+
+        try:
+            self.karenz_tage = int(config.get("karenz_tage") or 0)
+        except (TypeError, ValueError):
+            raise ValueError("Karenzzeit muss eine ganze Zahl (Handelstage) sein.")
+        if self.karenz_tage < 0:
+            raise ValueError("Karenzzeit darf nicht negativ sein.")
 
         self.waehrung = (config.get("waehrung") or "USD").strip().upper()
         if self.waehrung != "USD":
@@ -179,24 +209,31 @@ class SimulationsEngine:
 
         sim = Simulation(
             name=self.name, symbol=self.symbol, start=self.start, ende=self.ende,
-            kapital=self.kapital, waehrung=self.waehrung,
+            kapital=self.kapital, karenz_tage=self.karenz_tage, waehrung=self.waehrung,
             kauf_trigger=self.kauf_trigger, verkauf_trigger=self.verkauf_trigger,
         )
 
         cash, anteile, kaufkurs = self.kapital, 0.0, None
+        # Karenz: nach einem Trade am Tag i sind die Trigger bis einschließlich
+        # Index (i + karenz_tage) gesperrt — bei 0 bleibt alles wie bisher.
+        gesperrt_bis = -1
         for i in range(sim_start, len(daten)):
             datum, kurs = daten[i]
 
-            if anteile == 0 and kauf.pruefe(i, kurse, kaufkurs):
+            if i <= gesperrt_bis:
+                pass   # Karenzzeit läuft — keine Trigger-Prüfung
+            elif anteile == 0 and kauf.pruefe(i, kurse, kaufkurs):
                 anteile, kaufkurs = cash / kurs, kurs
                 sim.trades.append(SimulationsTrade(
                     datum=datum, typ="kauf", kurs=kurs, anteile=anteile, betrag=cash))
                 cash = 0.0
+                gesperrt_bis = i + self.karenz_tage
             elif anteile > 0 and verkauf.pruefe(i, kurse, kaufkurs):
                 cash = anteile * kurs
                 sim.trades.append(SimulationsTrade(
                     datum=datum, typ="verkauf", kurs=kurs, anteile=anteile, betrag=cash))
                 anteile, kaufkurs = 0.0, None
+                gesperrt_bis = i + self.karenz_tage
 
             sim.tage.append(SimulationsTag(
                 datum=datum, kurs=kurs, cash=cash, anteile=anteile,
@@ -265,6 +302,7 @@ def _kennzahlen(sim: Simulation) -> dict:
         "start":           sim.start.strftime("%d.%m.%Y"),
         "ende":            sim.ende.strftime("%d.%m.%Y"),
         "kapital":         sim.kapital,
+        "karenz_tage":     sim.karenz_tage,
         "waehrung":        sim.waehrung,
         "kauf_trigger":    sim.kauf_trigger,
         "verkauf_trigger": sim.verkauf_trigger,

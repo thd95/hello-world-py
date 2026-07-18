@@ -151,6 +151,11 @@ Vorgeschichte die Trigger vor dem Simulationsstart brauchen (SMA-Perioden).
   (gekauft wird mit dem gesamten Cash), mit Position den Verkauf-Trigger
   (verkauft wird alles). Für **jeden Handelstag** wird der Tagesendstand
   (Cash + Anteile × Kurs) festgehalten.
+- **Karenzzeit** (`karenz_tage`, Standard 0): Nach jedem ausgeführten Trade
+  werden für so viele Handelstage weder Kauf- noch Verkauf-Trigger geprüft
+  (Sperre `gesperrt_bis` im Tages-Loop) — dämpft Whipsaw-Signale. Für
+  Bestands-Datenbanken ergänzt `_migriere_karenz_spalte()` die Spalte per
+  `ALTER TABLE` (create_all() legt keine neuen Spalten an).
 - Vereinfachungen (bewusst): Handel nur in **USD** (Feld `waehrung` ist für
   weitere Währungen vorbereitet, andere Werte werden abgelehnt), teilbare
   Anteile, keine Gebühren, Ausführung zum Eröffnungskurs des Signaltags.
@@ -165,6 +170,7 @@ simulation                          simulations_tag          simulations_trade
 id, name, symbol                    id, simulation_id FK     id, simulation_id FK
 start, ende (ausschließend)         datum, kurs              datum, typ (kauf|verkauf)
 kapital, waehrung ("USD")           cash, anteile            kurs, anteile, betrag
+karenz_tage
 kauf_trigger, verkauf_trigger (JSON)  endstand  ← Tagesendstand
 erstellt_am, endstand,
 rendite_prozent, anzahl_trades
@@ -215,6 +221,8 @@ nur ein `panel-<name>`-Div plus einen Tab-Button im jeweiligen `<section>`):
     kleines SVG mit Startkapital-Referenzlinie, Kurslinie auf rechter Skala
     und Rechteck-Zoom wie im Kurs-Chart: `simZoom`, aufheben per Button oder
     Doppelklick) und Trade-Liste.
+  - Tab **Trigger-Hilfe** — statische Dokumentation aller Kauf-/Verkauf-Trigger,
+    der Karenzzeit und des Engine-Ablaufs (reines HTML, `panel-sim-hilfe`).
 - Menü **Verwaltung**:
   - Tab **Symbolliste** — alle Werte aus `GET /api/werte` mit Cache-Stand.
   - Tab **Neues Symbol** — Formular für `POST /api/werte` (`fuegeSymbolHinzu()`).
@@ -321,10 +329,13 @@ Führt einen Simulationslauf aus und speichert ihn. Body = Konfiguration
 
 ```json
 {"symbol": "^GDAXI", "start": "2018-01-01", "ende": "2026-07-01",
- "kapital": 25000, "waehrung": "USD", "name": "optional",
+ "kapital": 25000, "karenz_tage": 10, "waehrung": "USD", "name": "optional",
  "kauf_trigger":    {"typ": "sma_kreuzung", "periode": 200},
  "verkauf_trigger": {"typ": "stop_take", "stop_prozent": 8, "take_prozent": 25}}
 ```
+
+`karenz_tage` (optional, Standard 0): Handelstage nach jedem Trade, in denen
+kein weiterer Kauf/Verkauf ausgelöst wird.
 
 ```
 201 → Kennzahlen wie bei GET /api/simulationen (inkl. vergebener "id")
