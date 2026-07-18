@@ -314,6 +314,7 @@
     let aktiveTage = 365;
     let simVerlauf = null;          // zuletzt gezeichneter Kapitalverlauf (für Resize-Neuzeichnen)
     let zoomBereich = null;         // per Maus aufgezogener Chart-Ausschnitt: {von, bis} als Indizes in daxDaten
+    let simZoom = null;             // dito für den Kapitalverlauf: {von, bis} als Indizes in simVerlauf.tage
     let aktuelleEinheit = "Pkt.";   // Einheit des aktuell geladenen Werts (z. B. "Pkt.", "$", "€")
 
     // HTML-Sonderzeichen entschärfen — für alles, was per innerHTML eingefügt
@@ -562,6 +563,10 @@
           `<div class="stat"><div class="stat-label">${label}</div><div class="stat-wert">${wert}</div></div>`
         ).join("");
 
+        // Detailbereich VOR dem Zeichnen einblenden — im versteckten Zustand
+        // hat der Chart-Container keine Breite und das SVG bliebe klein.
+        document.getElementById("sim-detail").style.display = "block";
+        simZoom = null;   // anderer Lauf → alten Zoom-Ausschnitt aufheben
         zeichneVerlauf(d.tage, d.kapital, d.trades);
 
         document.getElementById("sim-trades-tbody").innerHTML = d.trades.map(t => `
@@ -574,9 +579,8 @@
           </tr>`).join("")
           || `<tr><td colspan="5" class="kein-daten">Keine Trades ausgelöst</td></tr>`;
 
-        const detail = document.getElementById("sim-detail");
-        detail.style.display = "block";
-        detail.scrollIntoView({ behavior: "smooth", block: "nearest" });
+        document.getElementById("sim-detail")
+          .scrollIntoView({ behavior: "smooth", block: "nearest" });
       } catch (err) {
         alert("Simulation konnte nicht geladen werden: " + err.message);
       }
@@ -587,7 +591,11 @@
     function zeichneVerlauf(tage, kapital, trades = []) {
       const wrap = document.getElementById("sim-verlauf");
       if (!tage.length) { wrap.innerHTML = ""; return; }
-      simVerlauf = { tage, kapital, trades };
+      simVerlauf = { tage, kapital, trades };   // immer die vollen Daten merken
+
+      // Aufgezogener Zoom-Ausschnitt: nur diesen Teil der Tage zeichnen
+      const offset = simZoom ? simZoom.von : 0;
+      if (simZoom) tage = tage.slice(simZoom.von, simZoom.bis + 1);
 
       // Breite aus dem Container (abzüglich Innenabstand), damit das Chart
       // die volle Seitenbreite nutzt; 780 als Rückfallwert im versteckten Zustand.
@@ -657,6 +665,10 @@
                 font-family="ui-monospace,Consolas,monospace">${tage[0].datum}</text>
           <text x="${ML+CW}" y="${H-4}" text-anchor="end" fill="#8a93a6" font-size="10"
                 font-family="ui-monospace,Consolas,monospace">${tage.at(-1).datum}</text>
+          <rect id="sim-zoom-rect" fill="#4f46e5" fill-opacity="0.10" stroke="#4f46e5"
+                stroke-opacity="0.5" stroke-dasharray="4 3" style="display:none;pointer-events:none"/>
+          <rect id="sim-hit" x="${ML}" y="${MT}" width="${CW}" height="${CH}"
+                fill="transparent" style="cursor:crosshair"/>
         </svg>
         <div class="legende" style="margin:0.5rem 0 0.2rem">
           <span><span class="swatch" style="background:${farbe}"></span>Kapital (linke Skala)</span>
@@ -665,8 +677,59 @@
           <span><span style="color:#16a34a">▲</span>&nbsp;Kauf</span>
           <span><span style="color:#dc2626">▼</span>&nbsp;Verkauf</span>
           <span style="color:var(--text-leise)">Marker überfahren zeigt Details</span>` : "")
+        + (simZoom ? `
+          <button class="range-btn" onclick="setzeSimZoomZurueck()"
+                  title="Auch per Doppelklick ins Chart">✕ Zoom aufheben</button>` : "")
         + `
         </div>`;
+
+      // ── Zoom: mit gedrückter Maustaste ein Rechteck aufziehen (wie im Kurs-Chart) ──
+      const svgEl = wrap.querySelector("svg");
+      const zr    = document.getElementById("sim-zoom-rect");
+      const hit   = document.getElementById("sim-hit");
+      const svgX  = (e) => {
+        const r = svgEl.getBoundingClientRect();
+        return Math.max(ML, Math.min(ML + CW, (e.clientX - r.left) * (W / r.width)));
+      };
+      const idxAn = (mx) =>
+        Math.max(0, Math.min(tage.length - 1, Math.round((mx - ML) / CW * (tage.length - 1))));
+
+      hit.onmousedown = (e) => {
+        e.preventDefault();
+        const start = svgX(e);
+        const zieh = (ev) => {
+          const mx = svgX(ev);
+          zr.setAttribute("x", Math.min(start, mx));
+          zr.setAttribute("width", Math.abs(mx - start));
+          zr.setAttribute("y", MT);
+          zr.setAttribute("height", CH);
+          zr.style.display = "block";
+        };
+        const los = (ev) => {
+          window.removeEventListener("mousemove", zieh);
+          zr.style.display = "none";
+          const mx = svgX(ev);
+          // Mini-Bewegungen (< 8 px) sind Klicks, kein Zoom; mindestens 2 Punkte
+          if (Math.abs(mx - start) > 8) {
+            const i0 = idxAn(Math.min(start, mx)), i1 = idxAn(Math.max(start, mx));
+            if (i1 - i0 >= 1) {
+              simZoom = { von: offset + i0, bis: offset + i1 };
+              zeichneVerlauf(simVerlauf.tage, simVerlauf.kapital, simVerlauf.trades);
+            }
+          }
+        };
+        window.addEventListener("mousemove", zieh);
+        window.addEventListener("mouseup", los, { once: true });
+      };
+
+      // Doppelklick ins Chart hebt den Zoom wieder auf
+      svgEl.ondblclick = () => setzeSimZoomZurueck();
+    }
+
+    function setzeSimZoomZurueck() {
+      if (!simZoom) return;
+      simZoom = null;
+      zeichneVerlauf(simVerlauf.tage, simVerlauf.kapital, simVerlauf.trades);
     }
 
     /* ── Daten laden (über die API, Zeitraum aus der Ladeleiste) ── */

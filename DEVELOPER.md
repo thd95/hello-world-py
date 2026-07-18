@@ -212,7 +212,9 @@ nur ein `panel-<name>`-Div plus einen Tab-Button im jeweiligen `<section>`):
   - Tab **Läufe** — alle gespeicherten Läufe (`ladeSimulationen()`); Klick auf
     eine Zeile öffnet die Detailansicht (`zeigeSimDetail()`): Kennzahlen-Karten,
     Kapitalverlaufs-Chart der Tagesendstände (`zeichneVerlauf()`, eigenes
-    kleines SVG mit Startkapital-Referenzlinie) und Trade-Liste.
+    kleines SVG mit Startkapital-Referenzlinie, Kurslinie auf rechter Skala
+    und Rechteck-Zoom wie im Kurs-Chart: `simZoom`, aufheben per Button oder
+    Doppelklick) und Trade-Liste.
 - Menü **Verwaltung**:
   - Tab **Symbolliste** — alle Werte aus `GET /api/werte` mit Cache-Stand.
   - Tab **Neues Symbol** — Formular für `POST /api/werte` (`fuegeSymbolHinzu()`).
