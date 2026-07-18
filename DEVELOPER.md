@@ -17,7 +17,7 @@ und interaktives SVG-Chart an.
 | Datenquelle| Yahoo Finance via [`yfinance`](https://pypi.org/project/yfinance/) |
 | Datenbank  | SQLite via SQLAlchemy 2.x (ORM, `DeclarativeBase`)       |
 | Backend    | Python-Standardbibliothek (`http.server`, kein Framework)|
-| Frontend   | Eine einzelne `index.html` — Vanilla JS, handgebautes SVG-Chart, keine externen Bibliotheken |
+| Frontend   | `index.html` (HTML + JS) und `styles.css` — Vanilla JS, handgebautes SVG-Chart, keine externen Bibliotheken |
 
 Python-Abhängigkeiten (siehe [requirements.txt](requirements.txt)): `yfinance`, `SQLAlchemy`.
 Der Code nutzt moderne Typannotationen (`list[tuple[date, float]]`, `str | None`)
@@ -54,7 +54,7 @@ Die Schichten sind strikt getrennt:
 - [simulation.py](simulation.py) — **Simulationsengine** samt Persistenz der Läufe (nutzt db.py und trigger.py).
 - [server.py](server.py) — **dünner HTTP-Adapter**: Routen, JSON-Ein-/Ausgabe, Fehlercodes.
 - [fetch_dax.py](fetch_dax.py) — **CLI-Adapter** auf dieselbe `db.py`-Logik (Vorbefüllen der DB).
-- [index.html](index.html) — komplettes Frontend in einer Datei (HTML + CSS + JS).
+- [index.html](index.html) — Frontend-Markup und -Logik (HTML + JS); das Stylesheet liegt in [styles.css](styles.css).
 
 ## 3. Module im Detail
 
@@ -191,9 +191,12 @@ Nutzt exakt dieselbe `hole_kurse()`-Logik wie der Server, d. h. der Aufruf
 befüllt den Cache in `kurse.db`. Standardwerte: `^GDAXI`, `2023-07-01` bis
 `2026-07-01`. Exit-Code 1, wenn keine Daten gefunden wurden.
 
-### 3.6 index.html — Frontend
+### 3.6 index.html + styles.css — Frontend
 
-Eine Datei, helles Design (CSS-Variablen in `:root`, Akzent Indigo/Sky).
+Markup und JavaScript in `index.html`, das Stylesheet separat in `styles.css`
+(helles Design, CSS-Variablen in `:root`, Akzent Indigo/Sky). Die Seite nutzt
+die volle Browserbreite; beide Charts zeichnen sich bei Größenänderung des
+Fensters neu.
 Zwei Navigationsebenen: ein **Hauptmenü** in der Kopfleiste (`zeigeMenue()`)
 wechselt zwischen den Bereichen, innerhalb eines Bereichs wechseln **Tabs**
 (`zeigeTab()`, wirkt nur auf Panels des eigenen Bereichs — neue Tabs brauchen
@@ -219,6 +222,10 @@ Beim Wechsel zurück ins Kurse-Menü wird ein aktives Chart neu gezeichnet
 
 Das **Chart** im Detail:
   - Zeitraum-Schnellwahl (Range-Buttons),
+  - **Zoom per Maus**: mit gedrückter Taste ein Rechteck aufziehen → das Chart
+    zeigt nur noch diese Zeitspanne (`zoomBereich`, Indizes in `daxDaten`);
+    aufheben per „✕ Zoom aufheben“-Button, Doppelklick ins Chart oder
+    Zeitraum-Schnellwahl,
   - zuschaltbaren Indikatoren: **Bollinger-Bänder**, **SMA 50**, **SMA 200**,
     **EMA 20** (Checkboxen, neu zeichnen via `zeichneChart(daxDaten, aktiveTage)`),
   - **Signal-Markern**: ▲/▼-Dreiecke an jedem Tag, an dem der Kurs den
@@ -334,8 +341,8 @@ python server.py                  # Server starten (legt kurse.db bei Bedarf an)
 # Browser: http://localhost:8000
 ```
 
-- **Frontend-Änderungen:** `index.html` editieren, Browser neu laden
-  (kein Build, Server sendet `no-cache`).
+- **Frontend-Änderungen:** `index.html` bzw. `styles.css` editieren, Browser
+  neu laden (kein Build, Server sendet `no-cache`).
 - **Backend-Änderungen:** Server neu starten (Strg+C, erneut `python server.py`).
 - **Datenbank zurücksetzen:** Server stoppen, `kurse.db` löschen — sie wird beim
   nächsten Start neu angelegt und mit `STANDARD_WERTE` befüllt.

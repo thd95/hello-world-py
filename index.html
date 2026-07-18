@@ -4,217 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Aktienkurse</title>
-  <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-
-    :root {
-      --primaer:      #4f46e5;   /* Indigo — Akzentfarbe der Oberfläche */
-      --primaer-hell: #eef0fe;
-      --kurs:         #0284c7;   /* Farbe der Kurslinie und Kurswerte */
-      --ok:           #16a34a;
-      --fehler:       #dc2626;
-      --text:         #1f2537;
-      --text-mittel:  #5b6478;
-      --text-leise:   #8a93a6;
-      --rand:         #e4e8f2;
-      --karte:        #ffffff;
-    }
-
-    body {
-      background: linear-gradient(180deg, #f4f6fc 0%, #eef1f9 100%);
-      color: var(--text);
-      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-      min-height: 100vh;
-    }
-
-    /* ── Kopfleiste mit Menü ── */
-    .topbar {
-      position: sticky; top: 0; z-index: 10;
-      display: flex; align-items: center; gap: 2rem;
-      background: rgba(255,255,255,0.92); backdrop-filter: blur(6px);
-      border-bottom: 1px solid var(--rand);
-      padding: 0.7rem 1.6rem;
-      box-shadow: 0 1px 8px rgba(31,37,55,0.06);
-    }
-    .brand { font-size: 1.05rem; font-weight: 700; letter-spacing: 0.01em; }
-    .brand .logo { margin-right: 0.4rem; }
-    .menu { display: flex; gap: 0.4rem; }
-    .menu-item {
-      border: none; background: none; cursor: pointer;
-      font-family: inherit; font-size: 0.9rem; font-weight: 600;
-      color: var(--text-mittel);
-      padding: 0.45rem 1.1rem; border-radius: 999px;
-      transition: background 0.15s, color 0.15s, box-shadow 0.15s;
-    }
-    .menu-item:hover { background: var(--primaer-hell); color: var(--primaer); }
-    .menu-item.aktiv {
-      background: linear-gradient(135deg, #4f46e5, #0284c7);
-      color: #fff;
-      box-shadow: 0 2px 8px rgba(79,70,229,0.35);
-    }
-
-    main { max-width: 860px; margin: 0 auto; padding: 1.6rem 1.2rem 3rem; }
-
-    .menu-section { display: none; }
-    .menu-section.aktiv { display: block; }
-
-    h1 {
-      font-size: 1.5rem; font-weight: 750; margin-bottom: 0.15rem;
-      background: linear-gradient(135deg, #4f46e5, #0284c7);
-      -webkit-background-clip: text; background-clip: text; color: transparent;
-      display: inline-block;
-    }
-    .subtitle { font-size: 0.85rem; color: var(--text-leise); margin-bottom: 1.2rem; }
-
-    /* ── Tabs (innerhalb eines Menüpunkts) ── */
-    .tabs {
-      display: flex; gap: 0.2rem;
-      margin-bottom: 1.2rem;
-      border-bottom: 2px solid var(--rand);
-    }
-    .tab {
-      padding: 0.5rem 1.2rem; cursor: pointer;
-      font-family: inherit; font-size: 0.88rem; font-weight: 600;
-      color: var(--text-mittel);
-      background: none; border: none;
-      border-bottom: 2px solid transparent; margin-bottom: -2px;
-      border-radius: 8px 8px 0 0;
-      transition: color 0.15s, border-color 0.15s, background 0.15s;
-    }
-    .tab:hover { color: var(--primaer); background: var(--primaer-hell); }
-    .tab.aktiv { color: var(--primaer); border-bottom-color: var(--primaer); }
-
-    .panel { display: none; }
-    .panel.aktiv { display: block; }
-
-    /* ── Gemeinsame Controls ── */
-    button {
-      background: var(--karte); border: 1px solid var(--rand); border-radius: 8px;
-      color: var(--text-mittel); cursor: pointer; font-family: inherit; font-size: 0.9rem;
-      padding: 0.4rem 1rem; transition: background 0.15s, border-color 0.15s, box-shadow 0.15s;
-    }
-    button:hover { border-color: var(--primaer); color: var(--primaer); }
-
-    /* ── Ladeleiste (Wert und Zeitraum wählen) ── */
-    .ladeleiste {
-      display: flex; flex-wrap: wrap; gap: 0.6rem; align-items: center;
-      margin-bottom: 1.2rem; padding: 0.9rem 1rem;
-      background: var(--karte); border: 1px solid var(--rand); border-radius: 12px;
-      box-shadow: 0 2px 10px rgba(31,37,55,0.05);
-    }
-    .ladeleiste label { color: var(--text-mittel); font-size: 0.82rem; font-weight: 600; }
-    input[type="date"], input[type="text"], input[type="number"] {
-      background: #fff; border: 1px solid var(--rand); border-radius: 8px;
-      color: var(--text); font-family: inherit; font-size: 0.85rem;
-      padding: 0.35rem 0.5rem; outline: none;
-    }
-    input[type="date"]:focus, input[type="text"]:focus, input[type="number"]:focus {
-      border-color: var(--primaer); box-shadow: 0 0 0 3px rgba(79,70,229,0.15);
-    }
-    select {
-      background: #fff; border: 1px solid var(--rand); border-radius: 8px;
-      color: var(--text); font-family: inherit; font-size: 0.85rem;
-      padding: 0.35rem 0.5rem; outline: none; cursor: pointer;
-    }
-    select:focus { border-color: var(--primaer); box-shadow: 0 0 0 3px rgba(79,70,229,0.15); }
-    .lade-btn {
-      background: linear-gradient(135deg, #4f46e5, #0284c7);
-      border: none; color: #fff; font-weight: 600;
-      box-shadow: 0 2px 8px rgba(79,70,229,0.3);
-    }
-    .lade-btn:hover { color: #fff; filter: brightness(1.08); box-shadow: 0 3px 12px rgba(79,70,229,0.4); }
-
-    /* ── Statusmeldungen ── */
-    .dax-status { font-size: 0.8rem; color: var(--text-leise); }
-    .dax-status.fehler { color: var(--fehler); }
-    .dax-status.ok { color: var(--ok); }
-
-    /* ── Tabellen ── */
-    .tabelle-wrapper {
-      overflow-y: auto; max-height: 480px;
-      background: var(--karte); border: 1px solid var(--rand); border-radius: 12px;
-      box-shadow: 0 2px 10px rgba(31,37,55,0.05);
-    }
-    table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
-    thead th {
-      background: #f7f8fd; color: var(--text-mittel); font-weight: 600;
-      padding: 0.6rem 1rem; text-align: left; position: sticky; top: 0;
-    }
-    tbody tr { border-top: 1px solid #f0f2f9; }
-    tbody tr:hover { background: #f6f8ff; }
-    td { padding: 0.45rem 1rem; color: var(--text); }
-    td.kurs { color: var(--kurs); font-weight: 600; text-align: right; font-variant-numeric: tabular-nums; }
-    .kein-daten { text-align: center; padding: 2rem; color: #b6bdcc; font-style: italic; }
-    .dax-info { margin-top: 0.6rem; font-size: 0.78rem; color: var(--text-leise); }
-
-    /* ── Chart ── */
-    #chart-wrap {
-      position: relative;
-      background: var(--karte); border: 1px solid var(--rand); border-radius: 12px;
-      box-shadow: 0 2px 10px rgba(31,37,55,0.05);
-      padding: 1.2rem 1.2rem 0.8rem;
-      user-select: none;
-    }
-    #chart-svg { display: block; width: 100%; overflow: visible; }
-
-    #tooltip {
-      position: absolute;
-      background: #fff; border: 1px solid var(--rand); border-radius: 8px;
-      box-shadow: 0 4px 14px rgba(31,37,55,0.12);
-      padding: 0.35rem 0.65rem; font-size: 0.78rem; color: var(--text);
-      pointer-events: none; white-space: nowrap; display: none;
-    }
-    #tooltip .tt-datum { color: var(--text-leise); margin-bottom: 0.1rem; }
-    #tooltip .tt-kurs  { color: var(--kurs); font-weight: 650; font-size: 0.9rem; }
-
-    #crosshair-line { stroke: #c3cad8; stroke-width: 1; stroke-dasharray: 4 3; pointer-events: none; display: none; }
-    #crosshair-dot  { fill: #fff; stroke: var(--kurs); stroke-width: 2; pointer-events: none; display: none; }
-
-    .chart-controls { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-bottom: 1rem; align-items: center; }
-    .zeitraum-label { color: var(--text-leise); font-size: 0.78rem; font-weight: 600; }
-    .range-btn {
-      padding: 0.25rem 0.7rem; font-size: 0.78rem; border-radius: 999px;
-      border: 1px solid var(--rand); background: var(--karte); color: var(--text-mittel);
-      cursor: pointer; font-family: inherit; transition: color 0.1s, border-color 0.1s, background 0.1s;
-    }
-    .range-btn:hover { color: var(--primaer); border-color: var(--primaer); }
-    .range-btn.aktiv { color: #fff; border-color: var(--primaer); background: var(--primaer); }
-    .chart-info { margin-top: 0.6rem; font-size: 0.78rem; color: var(--text-leise); }
-    .chart-leer { text-align: center; padding: 4rem; color: #b6bdcc; font-style: italic; }
-
-    /* Indikator-Umschalter + Legende */
-    .bb-toggle {
-      display: flex; align-items: center; gap: 0.35rem;
-      margin-left: auto; font-size: 0.78rem; color: var(--text-mittel); cursor: pointer;
-    }
-    .bb-toggle input { accent-color: #8b5cf6; cursor: pointer; }
-    .legende { display: flex; flex-wrap: wrap; gap: 1.2rem; margin-bottom: 0.8rem; font-size: 0.75rem; color: var(--text-mittel); }
-    .legende span { display: inline-flex; align-items: center; gap: 0.4rem; }
-    .swatch { width: 14px; height: 3px; border-radius: 2px; display: inline-block; }
-    .bb-legend.aus { opacity: 0.3; }
-    .ma-legend.aus { opacity: 0.3; }
-
-    /* ── Mittelwert-Kennzahlen ── */
-    .stats { display: flex; flex-wrap: wrap; gap: 0.5rem; }
-    .stats-titel { flex-basis: 100%; font-size: 0.78rem; color: var(--text-leise); margin-top: 1rem; }
-    .stat {
-      background: var(--karte); border: 1px solid var(--rand); border-radius: 12px;
-      box-shadow: 0 2px 10px rgba(31,37,55,0.05);
-      padding: 0.5rem 0.9rem; min-width: 150px;
-    }
-    .stat .stat-label { font-size: 0.7rem; color: var(--text-leise); margin-bottom: 0.15rem; }
-    .stat .stat-wert  { font-size: 0.92rem; font-weight: 650; color: var(--kurs); font-variant-numeric: tabular-nums; }
-
-    /* ── Simulation ── */
-    .klick-zeile { cursor: pointer; }
-    #sim-detail { margin-top: 1.4rem; }
-    #sim-verlauf {
-      background: var(--karte); border: 1px solid var(--rand); border-radius: 12px;
-      box-shadow: 0 2px 10px rgba(31,37,55,0.05);
-      padding: 1rem 1rem 0.6rem;
-    }
-    #sim-verlauf svg { display: block; width: 100%; }
-  </style>
+  <link rel="stylesheet" href="styles.css">
 </head>
 <body>
 
@@ -285,6 +75,8 @@
         <button class="range-btn" onclick="setRange(180,this)">6 M</button>
         <button class="range-btn aktiv" onclick="setRange(365,this)">1 J</button>
         <button class="range-btn" onclick="setRange(0,this)">Gesamt</button>
+        <button class="range-btn" id="zoom-reset" style="display:none"
+                onclick="setzeZoomZurueck()" title="Auch per Doppelklick ins Chart">✕ Zoom aufheben</button>
         <label class="bb-toggle">
           <input type="checkbox" id="bb-check" checked onchange="if(daxDaten)zeichneChart(daxDaten,aktiveTage)">
           Bollinger (20, 2σ)
@@ -345,6 +137,9 @@
           <g id="y-axis"></g>
           <line id="crosshair-line"/>
           <circle id="crosshair-dot" r="4"/>
+          <!-- Auswahl-Rechteck beim Aufziehen des Zoom-Bereichs -->
+          <rect id="zoom-rect" fill="#4f46e5" fill-opacity="0.10" stroke="#4f46e5"
+                stroke-opacity="0.5" stroke-dasharray="4 3" style="display:none;pointer-events:none"/>
           <rect id="hit-area" fill="transparent" style="cursor:crosshair"/>
         </svg>
         <div id="tooltip">
@@ -517,6 +312,8 @@
   <script>
     let daxDaten  = null;
     let aktiveTage = 365;
+    let simVerlauf = null;          // zuletzt gezeichneter Kapitalverlauf (für Resize-Neuzeichnen)
+    let zoomBereich = null;         // per Maus aufgezogener Chart-Ausschnitt: {von, bis} als Indizes in daxDaten
     let aktuelleEinheit = "Pkt.";   // Einheit des aktuell geladenen Werts (z. B. "Pkt.", "$", "€")
 
     // HTML-Sonderzeichen entschärfen — für alles, was per innerHTML eingefügt
@@ -790,8 +587,12 @@
     function zeichneVerlauf(tage, kapital, trades = []) {
       const wrap = document.getElementById("sim-verlauf");
       if (!tage.length) { wrap.innerHTML = ""; return; }
+      simVerlauf = { tage, kapital, trades };
 
-      const W = 780, H = 190, ML = 70, MR = 12, MT = 10, MB = 26;
+      // Breite aus dem Container (abzüglich Innenabstand), damit das Chart
+      // die volle Seitenbreite nutzt; 780 als Rückfallwert im versteckten Zustand.
+      const W = Math.max((wrap.clientWidth - 32) || 780, 320);
+      const H = 190, ML = 70, MR = 70, MT = 10, MB = 26;
       const CW = W - ML - MR, CH = H - MT - MB;
       const werte = tage.map(t => t.endstand);
       const vMin = Math.min(...werte, kapital), vMax = Math.max(...werte, kapital);
@@ -801,13 +602,24 @@
       const y  = v => MT + CH - ((v - yMin) / (yMax - yMin)) * CH;
       const farbe = werte.at(-1) >= kapital ? "#16a34a" : "#dc2626";
 
+      // Kursverlauf mit eigener Skala (rechte Achse) — Kurs und Kapital
+      // liegen in ganz unterschiedlichen Größenordnungen.
+      const kurse = tage.map(t => t.kurs);
+      const kPad  = (Math.max(...kurse) - Math.min(...kurse)) * 0.06 || 1;
+      const kMin  = Math.min(...kurse) - kPad, kMax = Math.max(...kurse) + kPad;
+      const yK = v => MT + CH - ((v - kMin) / (kMax - kMin)) * CH;
+      const ptsKurs = kurse.map((v, i) => `${x(i)},${yK(v)}`).join("L");
+
       const pts = werte.map((v, i) => `${x(i)},${y(v)}`).join("L");
       let gitter = "";
       for (let i = 0; i <= 4; i++) {
         const v = yMin + (yMax - yMin) * (i / 4);
+        const k = kMin + (kMax - kMin) * (i / 4);
         gitter += `<line x1="${ML}" x2="${ML+CW}" y1="${y(v)}" y2="${y(v)}" stroke="#eef0f7"/>`
                 + `<text x="${ML-8}" y="${y(v)+4}" text-anchor="end" fill="#8a93a6" font-size="11"
-                     font-family="ui-monospace,Consolas,monospace">${Math.round(v).toLocaleString("de-DE")}</text>`;
+                     font-family="ui-monospace,Consolas,monospace">${Math.round(v).toLocaleString("de-DE")}</text>`
+                + `<text x="${ML+CW+8}" y="${y(v)+4}" fill="#0284c7" font-size="11"
+                     font-family="ui-monospace,Consolas,monospace">${Math.round(k).toLocaleString("de-DE")}</text>`;
       }
 
       // ▲/▼-Marker an den Trade-Tagen auf der Verlaufslinie; der native
@@ -830,12 +642,14 @@
       }
 
       wrap.innerHTML = `
-        <svg viewBox="0 0 ${W} ${H}" height="${H}" aria-label="Kapitalverlauf der Simulation">
+        <svg viewBox="0 0 ${W} ${H}" height="${H}" aria-label="Kapital- und Kursverlauf der Simulation">
           ${gitter}
           <path d="M${x(0)},${MT+CH} L${pts} L${x(tage.length-1)},${MT+CH} Z"
                 fill="${farbe}" fill-opacity="0.08"/>
           <line x1="${ML}" x2="${ML+CW}" y1="${y(kapital)}" y2="${y(kapital)}"
                 stroke="#8a93a6" stroke-width="1" stroke-dasharray="5 4"/>
+          <path d="M${ptsKurs}" fill="none" stroke="#0284c7" stroke-width="1.2"
+                stroke-opacity="0.75" stroke-linejoin="round" stroke-linecap="round"/>
           <path d="M${pts}" fill="none" stroke="${farbe}" stroke-width="1.6"
                 stroke-linejoin="round" stroke-linecap="round"/>
           ${marker}
@@ -843,13 +657,16 @@
                 font-family="ui-monospace,Consolas,monospace">${tage[0].datum}</text>
           <text x="${ML+CW}" y="${H-4}" text-anchor="end" fill="#8a93a6" font-size="10"
                 font-family="ui-monospace,Consolas,monospace">${tage.at(-1).datum}</text>
-        </svg>`
-        + (trades.length ? `
+        </svg>
         <div class="legende" style="margin:0.5rem 0 0.2rem">
+          <span><span class="swatch" style="background:${farbe}"></span>Kapital (linke Skala)</span>
+          <span><span class="swatch" style="background:#0284c7"></span>Kurs (rechte Skala)</span>`
+        + (trades.length ? `
           <span><span style="color:#16a34a">▲</span>&nbsp;Kauf</span>
           <span><span style="color:#dc2626">▼</span>&nbsp;Verkauf</span>
-          <span style="color:var(--text-leise)">Marker überfahren zeigt Details</span>
-        </div>` : "");
+          <span style="color:var(--text-leise)">Marker überfahren zeigt Details</span>` : "")
+        + `
+        </div>`;
     }
 
     /* ── Daten laden (über die API, Zeitraum aus der Ladeleiste) ── */
@@ -893,6 +710,7 @@
         // Nach Datum aufsteigend sortieren (älteste zuerst) — damit das Chart
         // von links (alt) nach rechts (neu) läuft, unabhängig von der API-Reihenfolge.
         daxDaten = daten.slice().sort((a, b) => parseDE(a.datum) - parseDE(b.datum));
+        zoomBereich = null;   // Zoom bezieht sich auf die alten Daten — aufheben
 
         status.className = "dax-status ok";
         status.textContent = `✓ ${daxDaten.length} Handelstage geladen`;
@@ -921,9 +739,16 @@
 
     function setRange(tage, btn) {
       aktiveTage = tage;
+      zoomBereich = null;   // Schnellwahl hebt einen aufgezogenen Zoom auf
       document.querySelectorAll(".range-btn").forEach(b => b.classList.remove("aktiv"));
       btn.classList.add("aktiv");
       if (daxDaten) zeichneChart(daxDaten, tage);
+    }
+
+    function setzeZoomZurueck() {
+      if (!zoomBereich) return;
+      zoomBereich = null;
+      if (daxDaten) zeichneChart(daxDaten, aktiveTage);
     }
 
     function parseDE(s) {
@@ -1023,11 +848,20 @@
     }
 
     function zeichneChart(alle, tage) {
-      const daten = tage === 0 ? alle
-        : alle.filter(d => {
-            const diff = (parseDE(alle.at(-1).datum) - parseDE(d.datum)) / 86400000;
-            return diff <= tage;
-          });
+      // Ein aufgezogener Zoom-Ausschnitt hat Vorrang vor der Zeitraum-Schnellwahl.
+      let daten, offset;
+      if (zoomBereich) {
+        daten  = alle.slice(zoomBereich.von, zoomBereich.bis + 1);
+        offset = zoomBereich.von;
+      } else {
+        daten = tage === 0 ? alle
+          : alle.filter(d => {
+              const diff = (parseDE(alle.at(-1).datum) - parseDE(d.datum)) / 86400000;
+              return diff <= tage;
+            });
+        offset = alle.length - daten.length;   // daten ist ein Suffix von alle
+      }
+      document.getElementById("zoom-reset").style.display = zoomBereich ? "" : "none";
 
       const svg  = document.getElementById("chart-svg");
       const leer = document.getElementById("chart-leer");
@@ -1061,7 +895,6 @@
       //    Fenster zugeschnitten, damit z. B. der SMA 200 auch am Fensteranfang
       //    korrekte Werte aus der Vorgeschichte zeigt. ──
       const alleVals = alle.map(d => d.eroeffnung);
-      const offset = alle.length - daten.length;   // daten ist ein Suffix von alle
       const maDefs = [
         { pfad: "sma50-path",  check: "sma50-check",  legende: "sma50-legend",  serie: berechneSMA(alleVals, 50)  },
         { pfad: "sma200-path", check: "sma200-check", legende: "sma200-legend", serie: berechneSMA(alleVals, 200) },
@@ -1180,7 +1013,56 @@
       const cd = document.getElementById("crosshair-dot");
       const tt = document.getElementById("tooltip");
 
+      // ── Zoom: mit gedrückter Maustaste ein Rechteck aufziehen ──
+      // Die x-Spanne des Rechtecks wird beim Loslassen auf Datenindizes
+      // abgebildet und als zoomBereich (Indizes in 'alle') übernommen.
+      const zr = document.getElementById("zoom-rect");
+      const svgX = (e) => {
+        const rect = svg.getBoundingClientRect();
+        return Math.max(ML, Math.min(ML + CW, (e.clientX - rect.left) * (W / rect.width)));
+      };
+      const idxAn = (mx) =>
+        Math.max(0, Math.min(daten.length - 1, Math.round((mx - ML) / CW * (daten.length - 1))));
+      let dragStart = null;
+
+      hit.onmousedown = (e) => {
+        e.preventDefault();
+        dragStart = svgX(e);
+        const zieh = (ev) => {
+          const x = svgX(ev);
+          zr.setAttribute("x", Math.min(dragStart, x));
+          zr.setAttribute("width", Math.abs(x - dragStart));
+          zr.setAttribute("y", MT);
+          zr.setAttribute("height", CH);
+          zr.style.display = "block";
+        };
+        const los = (ev) => {
+          window.removeEventListener("mousemove", zieh);
+          zr.style.display = "none";
+          const x = svgX(ev);
+          // Mini-Bewegungen (< 8 px) sind Klicks, kein Zoom; mindestens 2 Punkte
+          if (Math.abs(x - dragStart) > 8) {
+            const i0 = idxAn(Math.min(dragStart, x)), i1 = idxAn(Math.max(dragStart, x));
+            if (i1 - i0 >= 1) {
+              zoomBereich = { von: offset + i0, bis: offset + i1 };
+              zeichneChart(alle, tage);
+            }
+          }
+          dragStart = null;
+        };
+        window.addEventListener("mousemove", zieh);
+        window.addEventListener("mouseup", los, { once: true });
+      };
+
+      // Doppelklick ins Chart hebt den Zoom wieder auf
+      svg.ondblclick = () => setzeZoomZurueck();
+
       hit.onmousemove = (e) => {
+        // Während des Aufziehens stören Tooltip und Crosshair nur
+        if (dragStart !== null) {
+          cl.style.display = cd.style.display = tt.style.display = "none";
+          return;
+        }
         const rect = svg.getBoundingClientRect();
         const mx   = (e.clientX - rect.left) * (W / rect.width);
         const i    = Math.max(0, Math.min(daten.length-1, Math.round((mx-ML)/CW*(daten.length-1))));
@@ -1231,6 +1113,8 @@
           && document.getElementById("menu-kurse").classList.contains("aktiv")
           && document.getElementById("panel-chart").classList.contains("aktiv"))
         zeichneChart(daxDaten, aktiveTage);
+      if (simVerlauf && document.getElementById("sim-verlauf").clientWidth)
+        zeichneVerlauf(simVerlauf.tage, simVerlauf.kapital, simVerlauf.trades);
     });
 
     // Beim Start das Dropdown und die Symbolliste aus der Datenbank befüllen
