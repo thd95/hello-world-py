@@ -660,7 +660,6 @@
                 stroke-opacity="0.75" stroke-linejoin="round" stroke-linecap="round"/>
           <path d="M${pts}" fill="none" stroke="${farbe}" stroke-width="1.6"
                 stroke-linejoin="round" stroke-linecap="round"/>
-          ${marker}
           <text x="${ML}" y="${H-4}" fill="#8a93a6" font-size="10"
                 font-family="ui-monospace,Consolas,monospace">${tage[0].datum}</text>
           <text x="${ML+CW}" y="${H-4}" text-anchor="end" fill="#8a93a6" font-size="10"
@@ -669,6 +668,9 @@
                 stroke-opacity="0.5" stroke-dasharray="4 3" style="display:none;pointer-events:none"/>
           <rect id="sim-hit" x="${ML}" y="${MT}" width="${CW}" height="${CH}"
                 fill="transparent" style="cursor:crosshair"/>
+          <!-- Marker ganz oben, sonst fängt die Trefferfläche das Hover ab
+               und die Trade-Tooltips (<title>) erscheinen nicht -->
+          ${marker}
         </svg>
         <div class="legende" style="margin:0.5rem 0 0.2rem">
           <span><span class="swatch" style="background:${farbe}"></span>Kapital (linke Skala)</span>
@@ -684,9 +686,10 @@
         </div>`;
 
       // ── Zoom: mit gedrückter Maustaste ein Rechteck aufziehen (wie im Kurs-Chart) ──
+      // Der Handler hängt am SVG (nicht an der Trefferfläche), damit auch ein
+      // Zug funktioniert, der auf einem Trade-Marker beginnt.
       const svgEl = wrap.querySelector("svg");
       const zr    = document.getElementById("sim-zoom-rect");
-      const hit   = document.getElementById("sim-hit");
       const svgX  = (e) => {
         const r = svgEl.getBoundingClientRect();
         return Math.max(ML, Math.min(ML + CW, (e.clientX - r.left) * (W / r.width)));
@@ -694,7 +697,7 @@
       const idxAn = (mx) =>
         Math.max(0, Math.min(tage.length - 1, Math.round((mx - ML) / CW * (tage.length - 1))));
 
-      hit.onmousedown = (e) => {
+      svgEl.onmousedown = (e) => {
         e.preventDefault();
         const start = svgX(e);
         const zieh = (ev) => {
