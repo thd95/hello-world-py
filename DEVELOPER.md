@@ -160,7 +160,8 @@ Vorgeschichte die Trigger vor dem Simulationsstart brauchen (SMA-Perioden).
   weitere Währungen vorbereitet, andere Werte werden abgelehnt), teilbare
   Anteile, keine Gebühren, Ausführung zum Eröffnungskurs des Signaltags.
 - `starte_simulation(config)` (validieren → laufen → speichern),
-  `liste_simulationen()`, `hole_simulation(id)` — die API-Einstiegspunkte.
+  `liste_simulationen()`, `hole_simulation(id)`, `loesche_simulation(id)`
+  (Cascade löscht Tagesdaten und Trades mit) — die API-Einstiegspunkte.
 
 Datenmodell (zusätzlich zu `wert`/`kurs`):
 
@@ -211,6 +212,8 @@ nur ein `panel-<name>`-Div plus einen Tab-Button im jeweiligen `<section>`):
 - Menü **Kurse** (mit der Ladeleiste für Wert/Zeitraum):
   - Tab **Tabelle** — Kursliste mit Statistik (Info-/Stats-Bereich).
   - Tab **Chart** — handgebautes SVG-Liniendiagramm (Details unten).
+  - Tab **Indikator-Hilfe** — statische Dokumentation der Chart-Indikatoren
+    und ihrer Bedienung (`panel-indi-hilfe`).
 - Menü **Simulation**:
   - Tab **Neuer Lauf** — Konfigurationsformular (Wert, Zeitraum, Kapital,
     Kauf-/Verkauf-Trigger mit typabhängigen Parameterfeldern, `zeigeSimFelder()`),
@@ -220,7 +223,8 @@ nur ein `panel-<name>`-Div plus einen Tab-Button im jeweiligen `<section>`):
     Kapitalverlaufs-Chart der Tagesendstände (`zeichneVerlauf()`, eigenes
     kleines SVG mit Startkapital-Referenzlinie, Kurslinie auf rechter Skala
     und Rechteck-Zoom wie im Kurs-Chart: `simZoom`, aufheben per Button oder
-    Doppelklick) und Trade-Liste.
+    Doppelklick) und Trade-Liste. Jede Zeile hat einen 🗑-Button
+    (`loescheSimulation()`, mit Rückfrage → `DELETE /api/simulationen/<id>`).
   - Tab **Trigger-Hilfe** — statische Dokumentation aller Kauf-/Verkauf-Trigger,
     der Karenzzeit und des Engine-Ablaufs (reines HTML, `panel-sim-hilfe`).
 - Menü **Verwaltung**:
@@ -237,7 +241,9 @@ Das **Chart** im Detail:
     aufheben per „✕ Zoom aufheben“-Button, Doppelklick ins Chart oder
     Zeitraum-Schnellwahl,
   - zuschaltbaren Indikatoren: **Bollinger-Bänder**, **SMA 50**, **SMA 200**,
-    **EMA 20** (Checkboxen, neu zeichnen via `zeichneChart(daxDaten, aktiveTage)`),
+    **EMA 20**, **Signale** — Checkboxen im aufklappbaren Menü „Indikatoren ▾“
+    (`toggleIndiMenue()`, schließt bei Klick außerhalb; neu zeichnen via
+    `zeichneChart(daxDaten, aktiveTage)`),
   - **Signal-Markern**: ▲/▼-Dreiecke an jedem Tag, an dem der Kurs den
     SMA 200 nach oben bzw. unten kreuzt (Erkennung: `findeKreuzungen()`,
     generisch für beliebige Indikator-Serien; der Tooltip zeigt das Signal mit an),
@@ -319,6 +325,17 @@ Ein Lauf im Detail: dieselben Kennzahlen plus `trades` (Datum, Typ, Kurs,
 Anteile, Betrag) und `tage` (Datum, Kurs, **Tagesendstand**).
 
 ```
+404 → {"fehler": "Simulation 99 nicht gefunden."}
+```
+
+### DELETE /api/simulationen/&lt;id&gt;
+
+Löscht einen gespeicherten Lauf endgültig — die zugehörigen Tagesdaten und
+Trades werden per Cascade mitgelöscht.
+
+```
+200 → {"geloescht": 5}
+400 → {"fehler": "Ungültige Simulations-ID."}
 404 → {"fehler": "Simulation 99 nicht gefunden."}
 ```
 

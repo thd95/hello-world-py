@@ -51,6 +51,7 @@
     <div class="tabs">
       <button class="tab aktiv" onclick="zeigeTab('dax', this)">📋 Tabelle</button>
       <button class="tab" onclick="zeigeTab('chart', this)">📈 Chart</button>
+      <button class="tab" onclick="zeigeTab('indi-hilfe', this)">📖 Indikator-Hilfe</button>
     </div>
 
     <!-- Tab 1a: Kurstabelle -->
@@ -77,26 +78,33 @@
         <button class="range-btn" onclick="setRange(0,this)">Gesamt</button>
         <button class="range-btn" id="zoom-reset" style="display:none"
                 onclick="setzeZoomZurueck()" title="Auch per Doppelklick ins Chart">✕ Zoom aufheben</button>
-        <label class="bb-toggle">
-          <input type="checkbox" id="bb-check" checked onchange="if(daxDaten)zeichneChart(daxDaten,aktiveTage)">
-          Bollinger (20, 2σ)
-        </label>
-        <label class="bb-toggle" style="margin-left:0">
-          <input type="checkbox" id="sma50-check" checked style="accent-color:#f59e0b" onchange="if(daxDaten)zeichneChart(daxDaten,aktiveTage)">
-          SMA 50
-        </label>
-        <label class="bb-toggle" style="margin-left:0">
-          <input type="checkbox" id="sma200-check" checked style="accent-color:#db2777" onchange="if(daxDaten)zeichneChart(daxDaten,aktiveTage)">
-          SMA 200
-        </label>
-        <label class="bb-toggle" style="margin-left:0">
-          <input type="checkbox" id="ema20-check" style="accent-color:#059669" onchange="if(daxDaten)zeichneChart(daxDaten,aktiveTage)">
-          EMA 20
-        </label>
-        <label class="bb-toggle" style="margin-left:0">
-          <input type="checkbox" id="signal-check" checked style="accent-color:#0284c7" onchange="if(daxDaten)zeichneChart(daxDaten,aktiveTage)">
-          Signale (SMA 200)
-        </label>
+        <!-- Indikatoren als aufklappbares Menü; die Checkbox-IDs werden von
+             zeichneChart() ausgewertet und dürfen sich nicht ändern -->
+        <div class="dropdown" id="indi-dropdown" style="margin-left:auto">
+          <button class="range-btn" id="indi-btn" onclick="toggleIndiMenue(event)">Indikatoren ▾</button>
+          <div class="dropdown-menu" id="indi-menu">
+            <label class="bb-toggle" style="margin-left:0">
+              <input type="checkbox" id="bb-check" checked onchange="if(daxDaten)zeichneChart(daxDaten,aktiveTage)">
+              Bollinger (20, 2σ)
+            </label>
+            <label class="bb-toggle" style="margin-left:0">
+              <input type="checkbox" id="sma50-check" checked style="accent-color:#f59e0b" onchange="if(daxDaten)zeichneChart(daxDaten,aktiveTage)">
+              SMA 50
+            </label>
+            <label class="bb-toggle" style="margin-left:0">
+              <input type="checkbox" id="sma200-check" checked style="accent-color:#db2777" onchange="if(daxDaten)zeichneChart(daxDaten,aktiveTage)">
+              SMA 200
+            </label>
+            <label class="bb-toggle" style="margin-left:0">
+              <input type="checkbox" id="ema20-check" style="accent-color:#059669" onchange="if(daxDaten)zeichneChart(daxDaten,aktiveTage)">
+              EMA 20
+            </label>
+            <label class="bb-toggle" style="margin-left:0">
+              <input type="checkbox" id="signal-check" checked style="accent-color:#0284c7" onchange="if(daxDaten)zeichneChart(daxDaten,aktiveTage)">
+              Signale (SMA 200)
+            </label>
+          </div>
+        </div>
       </div>
 
       <div class="legende" id="legende">
@@ -150,6 +158,80 @@
       </div>
       <div id="chart-info" class="chart-info"></div>
       <div id="chart-stats" class="stats"></div>
+    </div>
+
+    <!-- Tab 1c: Dokumentation der Chart-Indikatoren -->
+    <div id="panel-indi-hilfe" class="panel">
+
+      <div class="stats-titel" style="margin-top:0">Chart-Indikatoren — was zeigen die Linien?</div>
+      <div class="tabelle-wrapper" style="max-height:none">
+        <table>
+          <thead><tr>
+            <th style="width:210px">Indikator</th>
+            <th style="width:280px">Berechnung</th>
+            <th>Interpretation</th>
+          </tr></thead>
+          <tbody>
+            <tr>
+              <td><span class="swatch" style="background:#8b5cf6"></span>&nbsp;
+                  <strong>Bollinger-Bänder (20, 2σ)</strong></td>
+              <td>Mittelband = SMA über 20 Handelstage; oberes/unteres Band =
+                  Mittelband ± 2 Standardabweichungen desselben Fensters.</td>
+              <td>Die Bänder umschließen den „normalen“ Schwankungsbereich des Kurses.
+                  Enge Bänder = ruhige Phase (oft vor größeren Bewegungen), weite Bänder =
+                  hohe Volatilität. Kurse am oberen Band gelten als eher teuer,
+                  am unteren als eher günstig — kein Signal für sich allein.</td>
+            </tr>
+            <tr>
+              <td><span class="swatch" style="background:#f59e0b"></span>&nbsp;
+                  <strong>SMA 50</strong></td>
+              <td>Einfacher gleitender Durchschnitt der letzten 50 Eröffnungskurse —
+                  jeder Tag zählt gleich viel.</td>
+              <td>Glättet das tägliche Rauschen und zeigt den <strong>mittelfristigen
+                  Trend</strong> (~1 Quartal). Kurs über SMA 50 = Aufwärtstrend,
+                  darunter = Abwärtstrend.</td>
+            </tr>
+            <tr>
+              <td><span class="swatch" style="background:#db2777"></span>&nbsp;
+                  <strong>SMA 200</strong></td>
+              <td>Einfacher gleitender Durchschnitt der letzten 200 Eröffnungskurse
+                  (knapp ein Handelsjahr).</td>
+              <td>Der Klassiker für den <strong>langfristigen Trend</strong>: Notiert der
+                  Kurs darüber, gilt der Markt als bullisch. Kreuzt der SMA 50 den
+                  SMA 200 nach oben, spricht man vom „Golden Cross“, nach unten vom
+                  „Death Cross“.</td>
+            </tr>
+            <tr>
+              <td><span class="swatch" style="background:#059669"></span>&nbsp;
+                  <strong>EMA 20</strong></td>
+              <td>Exponentiell gewichteter Durchschnitt über 20 Tage — jüngere Kurse
+                  zählen stärker als ältere.</td>
+              <td>Reagiert deutlich <strong>schneller</strong> auf Kursänderungen als ein
+                  SMA gleicher Länge; beliebt für kurzfristige Trendwechsel, dafür
+                  anfälliger für Fehlsignale.</td>
+            </tr>
+            <tr>
+              <td><span style="color:#16a34a">▲</span><span style="color:#dc2626">▼</span>&nbsp;
+                  <strong>Signale (SMA 200)</strong></td>
+              <td>Markiert jeden Tag, an dem der Kurs den SMA 200 kreuzt:
+                  ▲ von unten nach oben, ▼ von oben nach unten.</td>
+              <td>Einfaches Trendwechsel-Signal — entspricht genau dem
+                  SMA-Kreuzungs-Trigger der Simulation. Der Tooltip im Chart zeigt
+                  das Signal am jeweiligen Tag mit an.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="stats-titel">Bedienung</div>
+      <div class="dax-info" style="margin-top:0.4rem">
+        Die Indikatoren lassen sich im Chart-Tab über das Menü „Indikatoren ▾“ einzeln
+        zu- und abschalten. Die gleitenden Durchschnitte werden über die Gesamtdaten
+        berechnet und sind daher auch am linken Rand des angezeigten Ausschnitts korrekt.
+        Zoomen: mit gedrückter Maustaste ein Rechteck aufziehen; aufheben per
+        „✕ Zoom aufheben“, Doppelklick ins Chart oder Zeitraum-Schnellwahl.
+      </div>
+
     </div>
 
   </section>
@@ -282,9 +364,10 @@
             <th style="text-align:right">Endstand</th>
             <th style="text-align:right">Rendite</th>
             <th style="text-align:right">Trades</th>
+            <th></th>
           </tr></thead>
           <tbody id="sim-tbody">
-            <tr><td colspan="6" class="kein-daten">Noch keine Simulationsläufe</td></tr>
+            <tr><td colspan="7" class="kein-daten">Noch keine Simulationsläufe</td></tr>
           </tbody>
         </table>
       </div>
@@ -414,6 +497,7 @@
     let simVerlauf = null;          // zuletzt gezeichneter Kapitalverlauf (für Resize-Neuzeichnen)
     let zoomBereich = null;         // per Maus aufgezogener Chart-Ausschnitt: {von, bis} als Indizes in daxDaten
     let simZoom = null;             // dito für den Kapitalverlauf: {von, bis} als Indizes in simVerlauf.tage
+    let simDetailId = null;         // ID des Laufs in der Detailansicht (für Löschen/Schließen)
     let aktuelleEinheit = "Pkt.";   // Einheit des aktuell geladenen Werts (z. B. "Pkt.", "$", "€")
 
     // HTML-Sonderzeichen entschärfen — für alles, was per innerHTML eingefügt
@@ -448,6 +532,18 @@
       if (name === "chart" && daxDaten) zeichneChart(daxDaten, aktiveTage);
       if (name === "symbole") ladeWerte();
     }
+
+    /* ── Indikatoren-Dropdown im Chart auf-/zuklappen ── */
+    function toggleIndiMenue(e) {
+      e.stopPropagation();   // sonst schließt der Dokument-Klick-Handler sofort wieder
+      document.getElementById("indi-menu").classList.toggle("offen");
+    }
+    // Klick außerhalb schließt das Menü; Klicks im Menü (Checkboxen) lassen es offen
+    document.addEventListener("click", (e) => {
+      const menu = document.getElementById("indi-menu");
+      if (menu.classList.contains("offen") && !e.target.closest("#indi-dropdown"))
+        menu.classList.remove("offen");
+    });
 
     /* ── Symbole: Liste aus der DB laden (füllt Dropdown und Symbolliste) ── */
     async function ladeWerte() {
@@ -632,12 +728,34 @@
             <td class="kurs">${l.endstand.toLocaleString("de-DE",{minimumFractionDigits:2})}</td>
             <td style="text-align:right;font-weight:600;color:${farbe}">${vz}${l.rendite_prozent.toLocaleString("de-DE")} %</td>
             <td style="text-align:right">${l.anzahl_trades}</td>
+            <td style="text-align:right"><button class="range-btn" title="Lauf löschen"
+                onclick="event.stopPropagation(); loescheSimulation(${l.id}, this)">🗑</button></td>
           </tr>`;
         }).join("")
-          || `<tr><td colspan="6" class="kein-daten">Noch keine Simulationsläufe</td></tr>`;
+          || `<tr><td colspan="7" class="kein-daten">Noch keine Simulationsläufe</td></tr>`;
       } catch (err) {
         tbody.innerHTML =
-          `<tr><td colspan="6" class="kein-daten">Fehler beim Laden: ${escapeHtml(err.message)}</td></tr>`;
+          `<tr><td colspan="7" class="kein-daten">Fehler beim Laden: ${escapeHtml(err.message)}</td></tr>`;
+      }
+    }
+
+    // Lauf nach Rückfrage endgültig löschen; Detailansicht schließen, falls
+    // gerade dieser Lauf angezeigt wird.
+    async function loescheSimulation(id, btn) {
+      if (!confirm("Diesen Simulationslauf endgültig löschen?")) return;
+      btn.disabled = true;
+      try {
+        const res = await fetch(`/api/simulationen/${id}`, { method: "DELETE" });
+        const antwort = await res.json();
+        if (!res.ok) throw new Error(antwort.fehler || `HTTP ${res.status}`);
+        if (simDetailId === id) {
+          document.getElementById("sim-detail").style.display = "none";
+          simDetailId = null;
+        }
+        await ladeSimulationen();
+      } catch (err) {
+        btn.disabled = false;
+        alert("Löschen fehlgeschlagen: " + err.message);
       }
     }
 
@@ -647,6 +765,7 @@
         const res = await fetch(`/api/simulationen/${id}`);
         const d = await res.json();
         if (!res.ok) throw new Error(d.fehler || `HTTP ${res.status}`);
+        simDetailId = id;
 
         const farbe = d.rendite_prozent >= 0 ? "#16a34a" : "#dc2626";
         const vz = d.rendite_prozent > 0 ? "+" : "";

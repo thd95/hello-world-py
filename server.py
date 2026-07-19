@@ -17,6 +17,8 @@ Lokaler HTTP-Server für die Kurs-Anwendung.
       POST /api/simulationen
            Body: Simulations-Konfiguration (siehe simulation.SimulationsEngine).
            Führt den Lauf sofort aus, speichert ihn und liefert die Kennzahlen.
+      DELETE /api/simulationen/<id>
+           Löscht einen gespeicherten Lauf samt Tagesdaten und Trades.
 
 Aufruf: python server.py
 Dann im Browser öffnen: http://localhost:8000
@@ -26,7 +28,9 @@ import json
 from urllib.parse import urlparse, parse_qs
 
 from db import fuege_wert_hinzu, hole_kurse, init_db, liste_werte
-from simulation import hole_simulation, liste_simulationen, starte_simulation
+from simulation import (
+    hole_simulation, liste_simulationen, loesche_simulation, starte_simulation,
+)
 
 # Nur auf localhost lauschen — die Anwendung ist nicht für den Netzzugriff
 # gedacht (keine Authentifizierung).
@@ -105,6 +109,24 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             self.send_json(antwort, 201)
         except ValueError as e:
             self.send_json({"fehler": str(e)}, 400)
+        except Exception as e:
+            self.send_json({"fehler": str(e)}, 500)
+
+    def do_DELETE(self):
+        pfad = urlparse(self.path).path
+        if not pfad.startswith("/api/simulationen/"):
+            self.send_json({"fehler": "Unbekannter Endpunkt."}, 404)
+            return
+        try:
+            sim_id = int(pfad.rsplit("/", 1)[1])
+        except ValueError:
+            self.send_json({"fehler": "Ungültige Simulations-ID."}, 400)
+            return
+        try:
+            if loesche_simulation(sim_id):
+                self.send_json({"geloescht": sim_id}, 200)
+            else:
+                self.send_json({"fehler": f"Simulation {sim_id} nicht gefunden."}, 404)
         except Exception as e:
             self.send_json({"fehler": str(e)}, 500)
 

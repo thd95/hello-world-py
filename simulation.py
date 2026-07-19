@@ -294,6 +294,17 @@ def hole_simulation(sim_id: int) -> dict | None:
         return detail
 
 
+def loesche_simulation(sim_id: int) -> bool:
+    """Löscht einen Lauf samt Tagesdaten und Trades (Cascade). False, wenn unbekannt."""
+    with Session(engine) as s:
+        sim = s.get(Simulation, sim_id)
+        if sim is None:
+            return False
+        s.delete(sim)
+        s.commit()
+        return True
+
+
 def _kennzahlen(sim: Simulation) -> dict:
     return {
         "id":              sim.id,
