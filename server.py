@@ -37,6 +37,11 @@ from simulation import (
 HOST = "127.0.0.1"
 PORT = 8000
 
+# Positivliste der ausgelieferten statischen Dateien — SimpleHTTPRequestHandler
+# würde sonst jede Datei im Arbeitsverzeichnis ausliefern, inkl. kurse.db und
+# der Python-Quellen.
+STATISCHE_DATEIEN = {"/", "/index.html", "/styles.css"}
+
 
 class Handler(http.server.SimpleHTTPRequestHandler):
     def end_headers(self):
@@ -80,7 +85,10 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 self.send_json({"fehler": str(e)}, 500)
             return
 
-        # ── sonst: statische Dateien wie gewohnt ──
+        # ── sonst: nur die freigegebenen statischen Dateien ──
+        if parsed.path not in STATISCHE_DATEIEN:
+            self.send_json({"fehler": "Nicht gefunden."}, 404)
+            return
         super().do_GET()
 
     def do_POST(self):

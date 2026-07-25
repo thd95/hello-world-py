@@ -207,7 +207,10 @@ def hole_kurse_roh(start: str, end: str, symbol: str = "^GDAXI") -> list[tuple[d
             lade_bis = max(end_d,   wert.cached_bis) if wert.cached_bis else end_d
             _lade_und_speichere(s, wert, lade_von, lade_bis)
             wert.cached_von = lade_von
-            wert.cached_bis = lade_bis
+            # Ein Enddatum in der Zukunft darf nie als "gecacht" gelten — sonst
+            # würden neu hinzukommende Handelstage nie mehr nachgeladen, sobald
+            # einmal bis zu einem zukünftigen Datum angefragt wurde.
+            wert.cached_bis = min(lade_bis, date.today())
             s.commit()
 
         kurse = s.scalars(
