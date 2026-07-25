@@ -4,6 +4,9 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Aktienkurse</title>
+  <!-- Favicon als Inline-SVG (📈 wie im Kopfbereich) — spart eine eigene Datei
+       und den 404 auf /favicon.ico, den der Browser sonst automatisch anfragt. -->
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>%F0%9F%93%88</text></svg>">
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -1156,7 +1159,12 @@
       leer.style.display = "none";
       svg.style.display  = "block";
 
-      const W  = wrap.clientWidth - 24;
+      // Breite aus dem Container (abzüglich Innenabstand). Im versteckten Zustand
+      // ist clientWidth 0; ohne Untergrenze entstünden daraus negative Breiten in
+      // viewBox und Clip-Rechteck. 780 fängt einen leeren Container ab, 320 ist die
+      // Mindestbreite. Beim Wechsel auf den Chart-Tab wird ohnehin mit der echten
+      // Breite neu gezeichnet.
+      const W  = Math.max((wrap.clientWidth - 24) || 780, 320);
       const H  = 340;
       const ML = 72, MR = 16, MT = 16, MB = 40;
       const CW = W - ML - MR;
