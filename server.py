@@ -60,14 +60,14 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         if parsed.path == "/api/werte":
             try:
                 self.send_json(liste_werte(), 200)
-            except Exception as e:
-                self.send_json({"fehler": str(e)}, 500)
+            except Exception:
+                self.send_json({"fehler": "Interner Serverfehler."}, 500)
             return
         if parsed.path == "/api/simulationen":
             try:
                 self.send_json(liste_simulationen(), 200)
-            except Exception as e:
-                self.send_json({"fehler": str(e)}, 500)
+            except Exception:
+                self.send_json({"fehler": "Interner Serverfehler."}, 500)
             return
         if parsed.path.startswith("/api/simulationen/"):
             try:
@@ -81,8 +81,8 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                     self.send_json({"fehler": f"Simulation {sim_id} nicht gefunden."}, 404)
                 else:
                     self.send_json(sim, 200)
-            except Exception as e:
-                self.send_json({"fehler": str(e)}, 500)
+            except Exception:
+                self.send_json({"fehler": "Interner Serverfehler."}, 500)
             return
 
         # ── sonst: nur die freigegebenen statischen Dateien ──
@@ -117,8 +117,8 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             self.send_json(antwort, 201)
         except ValueError as e:
             self.send_json({"fehler": str(e)}, 400)
-        except Exception as e:
-            self.send_json({"fehler": str(e)}, 500)
+        except Exception:
+            self.send_json({"fehler": "Interner Serverfehler."}, 500)
 
     def do_DELETE(self):
         pfad = urlparse(self.path).path
@@ -135,8 +135,8 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 self.send_json({"geloescht": sim_id}, 200)
             else:
                 self.send_json({"fehler": f"Simulation {sim_id} nicht gefunden."}, 404)
-        except Exception as e:
-            self.send_json({"fehler": str(e)}, 500)
+        except Exception:
+            self.send_json({"fehler": "Interner Serverfehler."}, 500)
 
     def handle_api(self, params):
         # Query-Parameter mit Standardwerten
@@ -150,8 +150,10 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 self.send_json({"fehler": f"Keine Daten für {symbol} ({start} bis {end})."}, 404)
             else:
                 self.send_json(daten, 200)
-        except Exception as e:
-            self.send_json({"fehler": str(e)}, 500)
+        except ValueError as e:
+            self.send_json({"fehler": str(e)}, 400)
+        except Exception:
+            self.send_json({"fehler": "Interner Serverfehler."}, 500)
 
     def send_json(self, obj, code):
         body = json.dumps(obj, ensure_ascii=False).encode("utf-8")

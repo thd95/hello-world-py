@@ -99,11 +99,14 @@ def _hole_oder_lege_wert_an(s: Session, symbol: str) -> Wert:
     return wert
 
 
-def _lade_und_speichere(s: Session, wert: Wert, start: date, end: date) -> None:
-    """Holt [start, end) von Yahoo und speichert neue Kurse (überspringt Duplikate)."""
+def _lade_und_speichere(s: Session, wert: Wert, start: date, end: date) -> bool:
+    """Holt [start, end) von Yahoo und speichert neue Kurse (überspringt Duplikate).
+
+    Rückgabe: True, wenn Yahoo mindestens einen Kurs geliefert hat.
+    """
     roh = lade_dax_roh(start.isoformat(), end.isoformat(), wert.symbol)
     if not roh:
-        return
+        return False
     bekannt = {
         d for d in s.scalars(
             select(Kurs.datum).where(
@@ -116,6 +119,7 @@ def _lade_und_speichere(s: Session, wert: Wert, start: date, end: date) -> None:
     for datum, eroeffnung in roh:
         if datum not in bekannt:
             s.add(Kurs(wert_id=wert.id, datum=datum, eroeffnung=eroeffnung))
+    return True
 
 
 def liste_werte() -> list[dict]:
@@ -191,6 +195,8 @@ def hole_kurse_roh(start: str, end: str, symbol: str = "^GDAXI") -> list[tuple[d
     """
     start_d = datetime.strptime(start, "%Y-%m-%d").date()
     end_d   = datetime.strptime(end,   "%Y-%m-%d").date()
+    if start_d >= end_d:
+        raise ValueError("Das Startdatum muss vor dem Enddatum liegen.")
 
     with Session(engine) as s:
         wert = _hole_oder_lege_wert_an(s, symbol)
@@ -205,13 +211,19 @@ def hole_kurse_roh(start: str, end: str, symbol: str = "^GDAXI") -> list[tuple[d
         if not gedeckt:
             lade_von = min(start_d, wert.cached_von) if wert.cached_von else start_d
             lade_bis = max(end_d,   wert.cached_bis) if wert.cached_bis else end_d
-            _lade_und_speichere(s, wert, lade_von, lade_bis)
-            wert.cached_von = lade_von
-            # Ein Enddatum in der Zukunft darf nie als "gecacht" gelten — sonst
-            # würden neu hinzukommende Handelstage nie mehr nachgeladen, sobald
-            # einmal bis zu einem zukünftigen Datum angefragt wurde.
-            wert.cached_bis = min(lade_bis, date.today())
-            s.commit()
+            hat_daten = _lade_und_speichere(s, wert, lade_von, lade_bis)
+
+            # Cache-Abdeckung nur erweitern, wenn Yahoo für den angefragten
+            # Bereich tatsächlich Daten geliefert hat. So vermeiden wir, dass
+            # API-Leerantworten (z. B. temporäre Fehler) als "vollständig
+            # gecacht" markiert werden.
+            if hat_daten:
+                wert.cached_von = lade_von
+                # Ein Enddatum in der Zukunft darf nie als "gecacht" gelten — sonst
+                # würden neu hinzukommende Handelstage nie mehr nachgeladen, sobald
+                # einmal bis zu einem zukünftigen Datum angefragt wurde.
+                wert.cached_bis = min(lade_bis, date.today())
+                s.commit()
 
         kurse = s.scalars(
             select(Kurs)
