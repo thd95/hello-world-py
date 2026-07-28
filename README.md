@@ -34,6 +34,11 @@ Weitere Symbole lassen sich in `index.html` im `<select id="symbol">` ergänzen 
 - `server.py` — einfacher lokaler HTTP-Server
 - `index.html` — Anzeige als Tabelle und interaktives Liniendiagramm
 
+## Betrieb auf einem eigenen Server
+
+Einrichtung auf einem Hetzner-Cloud-Server (Domain, HTTPS, Passwortschutz, Autostart):
+siehe [DEPLOY.md](DEPLOY.md).
+
 ## Für Entwickler
 
 Architektur, Datenmodell, API-Referenz und Erweiterungspunkte: siehe [DEVELOPER.md](DEVELOPER.md).

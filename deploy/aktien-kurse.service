@@ -1,0 +1,45 @@
+[Unit]
+Description=Aktien-Kurse (Kurs- und Simulations-Webanwendung)
+Documentation=https://github.com/thd95/hello-world-py
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=aktien
+Group=aktien
+WorkingDirectory=/opt/aktien-kurse
+ExecStart=/opt/aktien-kurse/.venv/bin/python server.py
+Restart=on-failure
+RestartSec=5
+
+# Ausgaben landen unformatiert im Journal (journalctl -u aktien-kurse)
+Environment=PYTHONUNBUFFERED=1
+# yfinance legt einen Cache an (Zeitzonen, Ticker-Metadaten) — dafür ein
+# eigenes Verzeichnis, sonst scheitert der Abruf ohne beschreibbares $HOME.
+CacheDirectory=aktien-kurse
+Environment=XDG_CACHE_HOME=/var/cache/aktien-kurse
+Environment=HOME=/var/cache/aktien-kurse
+
+# ── Härtung ──
+# Der Server lauscht nur auf 127.0.0.1:8000; nach außen geht nginx.
+NoNewPrivileges=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectSystem=strict
+ProtectHome=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictSUIDSGID=yes
+RestrictNamespaces=yes
+RestrictRealtime=yes
+LockPersonality=yes
+MemoryDenyWriteExecute=no
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+# Schreibrechte nur dort, wo die Anwendung sie braucht: kurse.db liegt im
+# Anwendungsverzeichnis.
+ReadWritePaths=/opt/aktien-kurse
+
+[Install]
+WantedBy=multi-user.target
