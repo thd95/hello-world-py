@@ -203,12 +203,15 @@ def hole_kurse_roh(start: str, end: str, symbol: str = "^GDAXI") -> list[tuple[d
 
         # Deckt der Cache den angefragten Zeitraum ab? Wenn nicht, laden wir den
         # Vereinigungsbereich, damit die Abdeckung lückenlos zusammenhängend bleibt.
+        # Aber: Zeiträume die bis in die Zukunft (oder heute) reichen, laden wir nicht
+        # nach — es gibt keine historischen Kurse für zukünftige Tage.
+        heute = date.today()
         gedeckt = (
             wert.cached_von is not None
             and wert.cached_von <= start_d
             and wert.cached_bis >= end_d
         )
-        if not gedeckt:
+        if not gedeckt and end_d <= heute:
             lade_von = min(start_d, wert.cached_von) if wert.cached_von else start_d
             lade_bis = max(end_d,   wert.cached_bis) if wert.cached_bis else end_d
             hat_daten = _lade_und_speichere(s, wert, lade_von, lade_bis)
@@ -219,10 +222,7 @@ def hole_kurse_roh(start: str, end: str, symbol: str = "^GDAXI") -> list[tuple[d
             # gecacht" markiert werden.
             if hat_daten:
                 wert.cached_von = lade_von
-                # Ein Enddatum in der Zukunft darf nie als "gecacht" gelten — sonst
-                # würden neu hinzukommende Handelstage nie mehr nachgeladen, sobald
-                # einmal bis zu einem zukünftigen Datum angefragt wurde.
-                wert.cached_bis = min(lade_bis, date.today())
+                wert.cached_bis = lade_bis
                 s.commit()
 
         kurse = s.scalars(

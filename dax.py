@@ -5,8 +5,17 @@ Abholen der Kurse. lade_dax_roh() liefert echte date-Objekte für die
 Datenbankschicht."""
 
 from datetime import date
+import signal
 
 import yfinance as yf
+
+
+class Timeout(Exception):
+    pass
+
+
+def _timeout_handler(signum, frame):
+    raise Timeout("Yahoo-Finance-Abruf hat zu lange gedauert")
 
 
 def lade_dax_roh(start: str, end: str, symbol: str = "^GDAXI") -> list[tuple[date, float]]:
@@ -17,14 +26,27 @@ def lade_dax_roh(start: str, end: str, symbol: str = "^GDAXI") -> list[tuple[dat
     symbol:     Yahoo-Finance-Symbol (Standard: ^GDAXI für den DAX)
 
     Rückgabe: Liste von (datum, eroeffnung), aufsteigend nach Datum sortiert.
+
+    Bei Timeout (>10 Sekunden) wird eine leere Liste zurückgegeben, damit die
+    Anwendung mit gecachten Daten weiterarbeitet statt zu blockieren.
     """
-    hist = yf.Ticker(symbol).history(start=start, end=end)
-    if hist.empty:
+    try:
+        signal.signal(signal.SIGALRM, _timeout_handler)
+        signal.alarm(10)
+
+        hist = yf.Ticker(symbol).history(start=start, end=end)
+        signal.alarm(0)
+
+        if hist.empty:
+            return []
+        return [
+            (datum.date(), round(float(row["Open"]), 2))
+            for datum, row in hist.iterrows()
+        ]
+    except Timeout:
         return []
-    return [
-        (datum.date(), round(float(row["Open"]), 2))
-        for datum, row in hist.iterrows()
-    ]
+    except Exception:
+        return []
 
 
 def hole_name(symbol: str) -> str | None:
