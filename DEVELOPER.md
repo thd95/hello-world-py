@@ -212,8 +212,10 @@ nur ein `panel-<name>`-Div plus einen Tab-Button im jeweiligen `<section>`):
 - Menü **Kurse** (mit der Ladeleiste für Wert/Zeitraum):
   - Tab **Tabelle** — Kursliste mit Statistik (Info-/Stats-Bereich).
   - Tab **Chart** — handgebautes SVG-Liniendiagramm (Details unten).
-  - Tab **Indikator-Hilfe** — statische Dokumentation der Chart-Indikatoren
-    und ihrer Bedienung (`panel-indi-hilfe`).
+  - Tab **Indikator-Hilfe** — statische Dokumentation der Chart-Indikatoren,
+    des Signal-Katalogs (Auslöse-Bedingung je Signal) und der Bedienung
+    (`panel-indi-hilfe`). Neue Einträge in `INDIKATOREN`/`SIGNALE` hier mit
+    aufnehmen.
 - Menü **Simulation**:
   - Tab **Neuer Lauf** — Konfigurationsformular (Wert, Zeitraum, Kapital,
     Kauf-/Verkauf-Trigger mit typabhängigen Parameterfeldern, `zeigeSimFelder()`),
@@ -249,11 +251,23 @@ Das **Chart** im Detail:
     Bedienung: `setzeIndikator(slot, id)` / `setzeIndikatorenZurueck()`,
     Felderaufbau: `fuelleIndikatorAuswahl()`. Verfügbare Indikatoren stehen in
     der Registry `INDIKATOREN` (siehe Abschnitt 6),
-  - **Signalen** als eigenem Schalter (`signal-check`) — sie zeichnen Marker
-    statt Linien und zählen **nicht** gegen die Zwei-Auswahl-Grenze,
-  - **Signal-Markern**: ▲/▼-Dreiecke an jedem Tag, an dem der Kurs den
-    SMA 200 nach oben bzw. unten kreuzt (Erkennung: `findeKreuzungen()`,
-    generisch für beliebige Indikator-Serien; der Tooltip zeigt das Signal mit an),
+  - **Signal-Auswahl**: zwei weitere Auswahlfelder im selben Menü — je eines für
+    **Kaufsignal** und **Verkaufssignal**, unabhängig voneinander und ebenfalls
+    leer startend. Anders als bei den Overlays gibt es **keine** Ausschlussregel:
+    beide dürfen auf demselben Indikator beruhen. Zustand: `signalWahl`
+    (`{ kauf, verkauf }`), Bedienung: `setzeSignal(art, id)` /
+    `setzeSignaleZurueck()`, Felderaufbau: `fuelleSignalAuswahl()`. Verfügbare
+    Signale stehen in der Registry `SIGNALE` (siehe Abschnitt 6),
+  - **Signal-Markern**: ▲/▼-Dreiecke an den Auslösetagen (Erkennung über
+    `findeKreuzungen()`, generisch für beliebige Indikator-Serien; der Tooltip
+    benennt die Signale des jeweiligen Tages). Kaufpfeile sitzen unter,
+    Verkaufspfeile über dem Kurspunkt — treffen beide auf denselben Tag, bleiben
+    sie dadurch getrennt lesbar,
+  - **Hintergrundberechnung**: der Indikator hinter einem Signal muss **kein**
+    Overlay sein. `zeichneChart()` hält dazu einen Cache (`holeLinien()`), über
+    den Overlays und Signale sich dieselbe Serie teilen — ein Indikator, an dem
+    Kauf- und Verkaufssignal hängen, wird also nur einmal berechnet. Gerechnet
+    wird ausschließlich, was aktuell ausgewählt ist,
   - Crosshair mit Tooltip (Datum + Kurs), Flächen-Gradient, Gitternetz.
 
 Zentrale JS-Funktionen: `ladeWerte()` (füllt das Symbol-Dropdown und die
@@ -422,9 +436,27 @@ Git-Konventionen (aus der Historie): Branches nach dem Muster
   daran hängt die farbliche Trennung der beiden Auswahl-Slots.
   Parameter sind bewusst fest im Eintrag hinterlegt; eine Bedienoberfläche
   dafür ist eine spätere Ausbaustufe.
-- **Neue Signal-Marker:** `findeKreuzungen(kurse, serie)` ist bewusst generisch —
-  für z. B. SMA-50-Kreuzungen dieselbe Funktion mit der SMA-50-Serie aufrufen
-  und im Marker-Block von `zeichneChart()` zeichnen (Vorbild: SMA-200-Signale).
+- **Neues Handelssignal:** einen Eintrag in der Registry `SIGNALE` in
+  [index.html](index.html) ergänzen — Auswahlfeld, Pfeile, Legende und Tooltip
+  ergeben sich daraus:
+
+  ```js
+  { id: "kauf-sma100", art: "kauf", name: "Kurs kreuzt SMA 100 nach oben",
+    indikator: "sma100", ausloeser: kreuzung(+1) }
+  ```
+
+  `art` entscheidet, in welchem Feld das Signal steht und ob der Pfeil nach oben
+  (`kauf`) oder unten (`verkauf`) zeigt. `indikator` verweist auf einen Eintrag
+  aus `INDIKATOREN`; bei mehrlinigen Indikatoren wählt `linie` die Serie aus
+  (Standard 0, Vorbild: `kauf-bb-unten` auf dem unteren Bollinger-Band). Der
+  Indikator muss **nicht** als Overlay sichtbar sein — er wird bei Bedarf im
+  Hintergrund berechnet.
+
+  `ausloeser(kurse, serie)` liefert die Indizes der Auslösetage. Für Kreuzungen
+  gibt es den Helfer `kreuzung(+1)` / `kreuzung(-1)`; andere Bedingungen
+  (Schwellwerte, Bandberührungen …) sind als eigene Funktion gleicher Signatur
+  frei formulierbar. `findeKreuzungen(kurse, serie)` ist dabei generisch für
+  beliebige Serien.
 - **Neuer Simulations-Trigger:** Bewerter-Klasse in [trigger.py](trigger.py)
   schreiben (Schnittstelle `pruefe(i, kurse, kaufkurs)`), in
   `erzeuge_kauf_bewerter()` bzw. `erzeuge_verkauf_bewerter()` registrieren,

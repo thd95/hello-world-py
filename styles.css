@@ -196,7 +196,11 @@ td.kurs { color: var(--kurs); font-weight: 600; text-align: right; font-variant-
 .dropdown-menu { min-width: 230px; }
 .dropdown .range-btn.aktiv-menue { color: var(--primaer); border-color: var(--primaer); }
 
-/* Indikator-Auswahl: zwei Felder + Zurücksetzen */
+/* Indikator- und Signal-Auswahl: Felder + Zurücksetzen */
+.indi-gruppe {
+  font-size: 0.68rem; font-weight: 700; letter-spacing: 0.04em;
+  text-transform: uppercase; color: var(--text-leise);
+}
 .indi-wahl {
   display: flex; flex-direction: column; gap: 0.25rem;
   font-size: 0.72rem; color: var(--text-mittel);
@@ -205,6 +209,7 @@ td.kurs { color: var(--kurs); font-weight: 600; text-align: right; font-variant-
   font: inherit; font-size: 0.78rem; color: var(--text);
   padding: 0.3rem 0.4rem; border: 1px solid var(--rand); border-radius: 7px;
   background: var(--karte); cursor: pointer;
+  max-width: 280px;   /* lange Signalnamen sprengen sonst das Menü */
 }
 .indi-wahl select option:disabled { color: var(--text-leise); }
 .indi-reset {

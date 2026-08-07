@@ -81,13 +81,15 @@
         <button class="range-btn" onclick="setRange(0,this)">Gesamt</button>
         <button class="range-btn" id="zoom-reset" style="display:none"
                 onclick="setzeZoomZurueck()" title="Auch per Doppelklick ins Chart">✕ Zoom aufheben</button>
-        <!-- Indikator-Auswahl als aufklappbares Menü: zwei Auswahlfelder, die sich
-             unterscheiden müssen. Die Optionen stammen aus der Registry
-             INDIKATOREN in <script>, die Felder werden von
-             fuelleIndikatorAuswahl() befüllt. -->
+        <!-- Aufklappbares Menü mit zwei getrennten Auswahlbereichen:
+             Overlay-Indikatoren (max. 2, müssen sich unterscheiden) und
+             Handelssignale (Kauf/Verkauf, unabhängig voneinander, gleiche
+             Indikator-Grundlage erlaubt). Die Optionen stammen aus den
+             Registries INDIKATOREN bzw. SIGNALE in <script>. -->
         <div class="dropdown" id="indi-dropdown" style="margin-left:auto">
-          <button class="range-btn" id="indi-btn" onclick="toggleIndiMenue(event)">Indikatoren ▾</button>
+          <button class="range-btn" id="indi-btn" onclick="toggleIndiMenue(event)">Indikatoren &amp; Signale ▾</button>
           <div class="dropdown-menu" id="indi-menu">
+            <div class="indi-gruppe">Indikatoren (max. 2)</div>
             <label class="indi-wahl">
               <span>Indikator 1</span>
               <select id="indi-0" onchange="setzeIndikator(0, this.value)"></select>
@@ -99,13 +101,21 @@
             <button class="indi-reset" id="indi-reset" onclick="setzeIndikatorenZurueck()">
               Auswahl zurücksetzen
             </button>
-            <!-- Signale sind ein Marker-Layer, kein Overlay-Indikator, und zählen
-                 daher nicht gegen die Zwei-Auswahl-Grenze. -->
+
             <div class="indi-trenner"></div>
-            <label class="bb-toggle" style="margin-left:0">
-              <input type="checkbox" id="signal-check" checked style="accent-color:#0284c7" onchange="if(daxDaten)zeichneChart(daxDaten,aktiveTage)">
-              Signale (SMA 200)
+
+            <div class="indi-gruppe">Signale</div>
+            <label class="indi-wahl">
+              <span>Kaufsignal</span>
+              <select id="signal-kauf" onchange="setzeSignal('kauf', this.value)"></select>
             </label>
+            <label class="indi-wahl">
+              <span>Verkaufssignal</span>
+              <select id="signal-verkauf" onchange="setzeSignal('verkauf', this.value)"></select>
+            </label>
+            <button class="indi-reset" id="signal-reset" onclick="setzeSignaleZurueck()">
+              Auswahl zurücksetzen
+            </button>
           </div>
         </div>
       </div>
@@ -202,14 +212,72 @@
                   SMA gleicher Länge; beliebt für kurzfristige Trendwechsel, dafür
                   anfälliger für Fehlsignale.</td>
             </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="stats-titel">Handelssignale — welche Bedingung löst aus?</div>
+      <div class="tabelle-wrapper" style="max-height:none">
+        <table>
+          <thead><tr>
+            <th style="width:210px">Signal</th>
+            <th style="width:280px">Grundlage</th>
+            <th>Auslöse-Bedingung</th>
+          </tr></thead>
+          <tbody>
             <tr>
-              <td><span style="color:#16a34a">▲</span><span style="color:#dc2626">▼</span>&nbsp;
-                  <strong>Signale (SMA 200)</strong></td>
-              <td>Markiert jeden Tag, an dem der Kurs den SMA 200 kreuzt:
-                  ▲ von unten nach oben, ▼ von oben nach unten.</td>
-              <td>Einfaches Trendwechsel-Signal — entspricht genau dem
-                  SMA-Kreuzungs-Trigger der Simulation. Der Tooltip im Chart zeigt
-                  das Signal am jeweiligen Tag mit an.</td>
+              <td><span style="color:#16a34a">▲</span>&nbsp;
+                  <strong>Kurs kreuzt SMA 200 nach oben</strong></td>
+              <td>SMA 200</td>
+              <td>Der Kurs schneidet den SMA 200 von unten nach oben — klassisches
+                  Einstiegssignal für einen beginnenden langfristigen Aufwärtstrend.</td>
+            </tr>
+            <tr>
+              <td><span style="color:#16a34a">▲</span>&nbsp;
+                  <strong>Kurs kreuzt SMA 50 nach oben</strong></td>
+              <td>SMA 50</td>
+              <td>Wie oben, aber auf den mittelfristigen Trend bezogen: früher am
+                  Markt als der SMA 200, dafür mit mehr Fehlsignalen.</td>
+            </tr>
+            <tr>
+              <td><span style="color:#16a34a">▲</span>&nbsp;
+                  <strong>Kurs kreuzt EMA 20 nach oben</strong></td>
+              <td>EMA 20</td>
+              <td>Kurzfristigstes der Einstiegssignale — reagiert am schnellsten,
+                  löst entsprechend häufig aus.</td>
+            </tr>
+            <tr>
+              <td><span style="color:#16a34a">▲</span>&nbsp;
+                  <strong>Kurs kreuzt unteres Bollinger-Band nach oben</strong></td>
+              <td>Bollinger-Bänder (20, 2σ), unteres Band</td>
+              <td>Der Kurs kehrt aus dem als überverkauft geltenden Bereich unterhalb
+                  des Bandes zurück — Rückkehr zum Mittelwert statt Trendfolge.</td>
+            </tr>
+            <tr>
+              <td><span style="color:#dc2626">▼</span>&nbsp;
+                  <strong>Kurs kreuzt SMA 200 nach unten</strong></td>
+              <td>SMA 200</td>
+              <td>Der Kurs schneidet den SMA 200 von oben nach unten — Ausstiegssignal
+                  bei drehendem langfristigem Trend.</td>
+            </tr>
+            <tr>
+              <td><span style="color:#dc2626">▼</span>&nbsp;
+                  <strong>Kurs kreuzt SMA 50 nach unten</strong></td>
+              <td>SMA 50</td>
+              <td>Mittelfristiges Gegenstück; schlägt früher an als der SMA 200.</td>
+            </tr>
+            <tr>
+              <td><span style="color:#dc2626">▼</span>&nbsp;
+                  <strong>Kurs kreuzt EMA 20 nach unten</strong></td>
+              <td>EMA 20</td>
+              <td>Kurzfristigstes Ausstiegssignal.</td>
+            </tr>
+            <tr>
+              <td><span style="color:#dc2626">▼</span>&nbsp;
+                  <strong>Kurs kreuzt oberes Bollinger-Band nach unten</strong></td>
+              <td>Bollinger-Bänder (20, 2σ), oberes Band</td>
+              <td>Der Kurs fällt aus dem als überkauft geltenden Bereich oberhalb des
+                  Bandes zurück — Gegenstück zum Einstieg am unteren Band.</td>
             </tr>
           </tbody>
         </table>
@@ -217,14 +285,21 @@
 
       <div class="stats-titel">Bedienung</div>
       <div class="dax-info" style="margin-top:0.4rem">
-        Im Chart-Tab lassen sich über das Menü „Indikatoren ▾“ <strong>bis zu zwei
-        Indikatoren</strong> auswählen. Der Chart startet ohne Indikator; ein bereits
-        gewählter Indikator ist im zweiten Feld ausgegraut, derselbe Indikator kann also
-        nicht zweimal aktiv sein. Ein mehrliniger Indikator wie die Bollinger-Bänder zählt
-        dabei als <strong>eine</strong> Auswahl. Über „— kein Indikator —“ wird ein
-        einzelner entfernt, „Auswahl zurücksetzen“ leert beide Felder. Die Signale sind
-        ein eigener Schalter und zählen nicht gegen die Zwei-Auswahl-Grenze.
-        Die Parameter sind in dieser Version fest hinterlegt.
+        Im Chart-Tab führt das Menü „Indikatoren &amp; Signale ▾“ zwei getrennte
+        Auswahlbereiche.<br><br>
+        <strong>Indikatoren:</strong> bis zu <strong>zwei</strong> gleichzeitig. Der Chart
+        startet ohne Indikator; ein bereits gewählter Indikator ist im zweiten Feld
+        ausgegraut, derselbe Indikator kann also nicht zweimal aktiv sein. Ein mehrliniger
+        Indikator wie die Bollinger-Bänder zählt dabei als <strong>eine</strong> Auswahl.<br><br>
+        <strong>Signale:</strong> je ein Feld für Kauf- und Verkaufssignal, unabhängig
+        voneinander wählbar. Hier gibt es <em>keine</em> Ausschlussregel — beide dürfen auf
+        demselben Indikator beruhen (z. B. SMA 200 nach oben als Kauf-, nach unten als
+        Verkaufssignal). Der zugrunde liegende Indikator muss nicht als Overlay sichtbar
+        sein; er wird dann nur im Hintergrund berechnet. Treffen Kauf- und Verkaufspfeil
+        auf denselben Tag, sitzt der Kaufpfeil unter, der Verkaufspfeil über dem Kurspunkt.<br><br>
+        In beiden Bereichen entfernt „— kein Indikator —“ bzw. „— kein Signal —“ eine
+        einzelne Auswahl, „Auswahl zurücksetzen“ leert den jeweiligen Bereich.
+        Alle Parameter und Signal-Bedingungen sind in dieser Version fest hinterlegt.
         Alle Indikatoren werden über die Gesamtdaten berechnet und sind daher auch am
         linken Rand des angezeigten Ausschnitts korrekt.
         Zoomen: mit gedrückter Maustaste ein Rechteck aufziehen; aufheben per
@@ -600,10 +675,9 @@
             `${i.id === belegtVomAnderen ? " disabled" : ""}>${escapeHtml(i.name)}</option>`
           ).join("");
       });
-      const anzahl = indikatorWahl.filter(Boolean).length;
-      document.getElementById("indi-btn").textContent =
-        anzahl ? `Indikatoren (${anzahl}) ▾` : "Indikatoren ▾";
-      document.getElementById("indi-reset").disabled = anzahl === 0;
+      document.getElementById("indi-reset").disabled =
+        indikatorWahl.filter(Boolean).length === 0;
+      aktualisiereMenueKnopf();
     }
 
     /* Belegt einen Slot neu ("" = Indikator entfernen) und zeichnet den Chart neu. */
@@ -618,6 +692,101 @@
       indikatorWahl = [null, null];
       fuelleIndikatorAuswahl();
       if (daxDaten) zeichneChart(daxDaten, aktiveTage);
+    }
+
+    /* ══ Signal-Registry ══
+       Handelssignale sind fest hinterlegte Bedingungen auf genau einem
+       Indikator. Sie sind unabhängig von der Overlay-Auswahl: der zugrunde
+       liegende Indikator wird bei Bedarf nur zur Berechnung herangezogen, ohne
+       im Chart zu erscheinen.
+
+         id         – stabiler Schlüssel (wird als <option value> verwendet)
+         art        – "kauf" (Pfeil nach oben) oder "verkauf" (Pfeil nach unten);
+                      bestimmt auch, in welchem Auswahlfeld das Signal steht
+         name       – Beschriftung in Auswahlfeld, Legende und Tooltip
+         indikator  – id aus INDIKATOREN, aus dem die Bedingung berechnet wird
+         linie      – Index der Linie dieses Indikators (Standard 0; relevant bei
+                      mehrlinigen Indikatoren wie den Bollinger-Bändern)
+         ausloeser  – (kurse, serie) → Indizes, an denen das Signal auslöst
+
+       Anders als bei den Overlays gibt es hier bewusst keine Ausschlussregel:
+       Kauf- und Verkaufssignal dürfen auf demselben Indikator beruhen. Die
+       Indikator-Serien werden beim Zeichnen zwischengespeichert und daher auch
+       dann nur einmal berechnet. */
+    const kreuzung = (richtung) => (kurse, serie) =>
+      findeKreuzungen(kurse, serie)
+        .filter(k => k.richtung === richtung)
+        .map(k => k.index);
+
+    const SIGNALE = [
+      // ── Kaufsignale ──
+      { id: "kauf-sma200",    art: "kauf", name: "Kurs kreuzt SMA 200 nach oben",
+        indikator: "sma200", ausloeser: kreuzung(+1) },
+      { id: "kauf-sma50",     art: "kauf", name: "Kurs kreuzt SMA 50 nach oben",
+        indikator: "sma50",  ausloeser: kreuzung(+1) },
+      { id: "kauf-ema20",     art: "kauf", name: "Kurs kreuzt EMA 20 nach oben",
+        indikator: "ema20",  ausloeser: kreuzung(+1) },
+      { id: "kauf-bb-unten",  art: "kauf", name: "Kurs kreuzt unteres Bollinger-Band nach oben",
+        indikator: "bollinger", linie: 2, ausloeser: kreuzung(+1) },
+
+      // ── Verkaufssignale ──
+      { id: "verkauf-sma200", art: "verkauf", name: "Kurs kreuzt SMA 200 nach unten",
+        indikator: "sma200", ausloeser: kreuzung(-1) },
+      { id: "verkauf-sma50",  art: "verkauf", name: "Kurs kreuzt SMA 50 nach unten",
+        indikator: "sma50",  ausloeser: kreuzung(-1) },
+      { id: "verkauf-ema20",  art: "verkauf", name: "Kurs kreuzt EMA 20 nach unten",
+        indikator: "ema20",  ausloeser: kreuzung(-1) },
+      { id: "verkauf-bb-oben", art: "verkauf", name: "Kurs kreuzt oberes Bollinger-Band nach unten",
+        indikator: "bollinger", linie: 0, ausloeser: kreuzung(-1) },
+    ];
+
+    const SIGNAL_FARBE = { kauf: "#16a34a", verkauf: "#dc2626" };
+    const SIGNAL_PFEIL = { kauf: "▲", verkauf: "▼" };
+
+    // Gewähltes Kauf- bzw. Verkaufssignal (id oder null). Startzustand: keins.
+    let signalWahl = { kauf: null, verkauf: null };
+
+    const signalNach = (id) => SIGNALE.find(s => s.id === id) || null;
+
+    /* Baut beide Signal-Auswahlfelder neu auf. Jedes Feld zeigt nur die Signale
+       seiner Art; eine gegenseitige Sperrung gibt es hier bewusst nicht. */
+    function fuelleSignalAuswahl() {
+      for (const art of ["kauf", "verkauf"]) {
+        const sel = document.getElementById("signal-" + art);
+        sel.innerHTML =
+          `<option value="">— kein Signal —</option>` +
+          SIGNALE.filter(s => s.art === art).map(s =>
+            `<option value="${s.id}"${s.id === signalWahl[art] ? " selected" : ""}>` +
+            `${escapeHtml(s.name)}</option>`
+          ).join("");
+      }
+      document.getElementById("signal-reset").disabled =
+        !signalWahl.kauf && !signalWahl.verkauf;
+      aktualisiereMenueKnopf();
+    }
+
+    /* Belegt ein Signalfeld neu ("" = Signal entfernen). Wird ein Signal
+       entfernt, entfällt beim nächsten Zeichnen auch die Hintergrundberechnung
+       seines Indikators — gerechnet wird nur, was aktuell gebraucht wird. */
+    function setzeSignal(art, id) {
+      signalWahl[art] = id || null;
+      fuelleSignalAuswahl();
+      if (daxDaten) zeichneChart(daxDaten, aktiveTage);
+    }
+
+    /* Leert beide Signalfelder — zurück in den leeren Startzustand. */
+    function setzeSignaleZurueck() {
+      signalWahl = { kauf: null, verkauf: null };
+      fuelleSignalAuswahl();
+      if (daxDaten) zeichneChart(daxDaten, aktiveTage);
+    }
+
+    /* Zeigt am Menüknopf, wie viele Einträge insgesamt ausgewählt sind. */
+    function aktualisiereMenueKnopf() {
+      const anzahl = indikatorWahl.filter(Boolean).length
+                   + [signalWahl.kauf, signalWahl.verkauf].filter(Boolean).length;
+      document.getElementById("indi-btn").textContent =
+        anzahl ? `Indikatoren & Signale (${anzahl}) ▾` : "Indikatoren & Signale ▾";
     }
 
     /* ── Indikatoren-Dropdown im Chart auf-/zuklappen ── */
@@ -1269,10 +1438,24 @@
       // aufs Fenster zugeschnitten, damit sie auch am linken Fensterrand
       // korrekte Werte aus der Vorgeschichte zeigen.
       const alleVals = alle.map(d => d.eroeffnung);
+
+      // Linien werden je Indikator nur einmal berechnet und aus dem Cache
+      // wiederverwendet — egal ob sie ein Overlay speisen, ein Signal oder
+      // beides. Ein Indikator, an dem Kauf- und Verkaufssignal gleichzeitig
+      // hängen, wird damit ebenfalls nur einmal gerechnet.
+      const linienCache = new Map();
+      const holeLinien = (id) => {
+        if (!linienCache.has(id)) {
+          const def = indikatorNach(id);
+          linienCache.set(id, def ? def.linien(alleVals) : null);
+        }
+        return linienCache.get(id);
+      };
+
       const aktive = indikatorWahl
         .map(indikatorNach)
         .filter(Boolean)
-        .map(def => ({ def, linien: def.linien(alleVals) }));
+        .map(def => ({ def, linien: holeLinien(def.id) }));
 
       // Y-Bereich: Werte der aktiven Indikatoren einbeziehen, damit im Fenster
       // nichts abgeschnitten wird.
@@ -1378,35 +1561,53 @@
           `</span>`);
       }
 
-      // ── Signifikante Punkte: Kurs kreuzt den SMA 200 ──
-      // Kreuzungen werden über die Gesamtdaten gesucht (wie die Durchschnitte
-      // selbst) und nur die im Fenster sichtbaren markiert: ▲ = Kurs schneidet
-      // den SMA 200 nach oben, ▼ = nach unten.
-      const marker  = document.getElementById("signal-marker");
-      const signale = new Map();   // Index in 'daten' → +1 (nach oben) / −1 (nach unten)
+      // ── Handelssignale zeichnen ──
+      // Auslösepunkte werden über die Gesamtdaten gesucht (wie die Indikatoren
+      // selbst) und nur die im Fenster sichtbaren markiert. Der zugrunde
+      // liegende Indikator kommt aus dem Cache und muss dafür kein Overlay sein.
+      // Kaufpfeile werden zuerst gezeichnet; sie sitzen unterhalb des
+      // Kurspunkts, Verkaufspfeile oberhalb — treffen beide auf denselben Tag,
+      // bleiben sie dadurch als zwei getrennte Signale erkennbar.
+      const marker = document.getElementById("signal-marker");
+      const signalTexte = new Map();   // Index in 'daten' → [{ art, name }]
+      const signalLegende = [];
       marker.innerHTML = "";
-      const sigAn = document.getElementById("signal-check").checked;
-      if (sigAn) {
-        // eigene Berechnung — die Signale hängen nicht an der Indikator-Auswahl
-        const sma200 = berechneSMA(alleVals, 200);
-        for (const { index, richtung } of findeKreuzungen(alleVals, sma200)) {
+
+      for (const art of ["kauf", "verkauf"]) {
+        const sig = signalNach(signalWahl[art]);
+        if (!sig) continue;
+        const linien = holeLinien(sig.indikator);
+        if (!linien) continue;
+        const serie = linien[sig.linie || 0].werte;
+
+        let getroffen = 0;
+        for (const index of sig.ausloeser(alleVals, serie)) {
           const i = index - offset;
           if (i < 0 || i >= daten.length) continue;
-          signale.set(i, richtung);
+          getroffen++;
+          if (!signalTexte.has(i)) signalTexte.set(i, []);
+          signalTexte.get(i).push({ art, name: sig.name });
           const x = xs[i], y = yS(daten[i].eroeffnung);
-          marker.innerHTML += richtung > 0
-            ? `<path d="M${x},${y + 5} L${x - 5},${y + 13} L${x + 5},${y + 13} Z" fill="#16a34a"/>`
-            : `<path d="M${x},${y - 5} L${x - 5},${y - 13} L${x + 5},${y - 13} Z" fill="#dc2626"/>`;
+          marker.innerHTML += art === "kauf"
+            ? `<path d="M${x},${y + 5} L${x - 5},${y + 13} L${x + 5},${y + 13} Z" fill="${SIGNAL_FARBE.kauf}"/>`
+            : `<path d="M${x},${y - 5} L${x - 5},${y - 13} L${x + 5},${y - 13} Z" fill="${SIGNAL_FARBE.verkauf}"/>`;
         }
+
+        // Löst das Signal im Fenster nicht aus, bleibt der Legendeneintrag als
+        // Hinweis stehen — sonst wirkte die Auswahl wie ohne Effekt.
+        signalLegende.push(
+          `<span${getroffen ? "" : ' class="aus"'}>` +
+          `<span style="color:${SIGNAL_FARBE[art]}">${SIGNAL_PFEIL[art]}</span>` +
+          `${escapeHtml(sig.name)}` +
+          (getroffen ? "" : ` <span class="legende-linien">(kein Treffer im Zeitraum)</span>`) +
+          `</span>`);
       }
-      // ── Legende neu aufbauen: Kurs, aktive Indikatoren, ggf. Signale ──
+
+      // ── Legende neu aufbauen: Kurs, aktive Indikatoren, aktive Signale ──
       document.getElementById("legende").innerHTML =
         `<span><span class="swatch" style="background:#0284c7"></span>Kurs</span>` +
         legendenTeile.join("") +
-        (sigAn
-          ? `<span><span style="color:#16a34a">▲</span><span style="color:#dc2626">▼</span>` +
-            `&nbsp;Kreuzung Kurs / SMA 200</span>`
-          : "");
+        signalLegende.join("");
 
       const hit = document.getElementById("hit-area");
       hit.setAttribute("x", ML); hit.setAttribute("y", MT);
@@ -1487,13 +1688,14 @@
         document.getElementById("tt-kurs").textContent  =
           daten[i].eroeffnung.toLocaleString("de-DE",{minimumFractionDigits:2}) + " " + aktuelleEinheit;
 
-        // Liegt an diesem Tag eine SMA-200-Kreuzung, zeigt der Tooltip sie an.
-        const sig   = signale.get(i);
-        const ttSig = document.getElementById("tt-signal");
-        if (sig) {
+        // Lösen an diesem Tag Signale aus, benennt der Tooltip sie einzeln.
+        const treffer = signalTexte.get(i);
+        const ttSig   = document.getElementById("tt-signal");
+        if (treffer) {
           ttSig.style.display = "block";
-          ttSig.style.color   = sig > 0 ? "#16a34a" : "#dc2626";
-          ttSig.textContent   = sig > 0 ? "▲ Kurs über SMA 200" : "▼ Kurs unter SMA 200";
+          ttSig.innerHTML = treffer.map(t =>
+            `<div style="color:${SIGNAL_FARBE[t.art]}">` +
+            `${SIGNAL_PFEIL[t.art]} ${escapeHtml(t.name)}</div>`).join("");
         } else {
           ttSig.style.display = "none";
         }
@@ -1525,6 +1727,7 @@
     // Trigger-Parameterfelder passend zur Vorauswahl schalten
     ladeWerte();
     fuelleIndikatorAuswahl();
+    fuelleSignalAuswahl();
     zeigeSimFelder();
   </script>
 
