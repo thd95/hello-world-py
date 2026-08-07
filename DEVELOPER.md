@@ -240,10 +240,17 @@ Das **Chart** im Detail:
     zeigt nur noch diese Zeitspanne (`zoomBereich`, Indizes in `daxDaten`);
     aufheben per „✕ Zoom aufheben“-Button, Doppelklick ins Chart oder
     Zeitraum-Schnellwahl,
-  - zuschaltbaren Indikatoren: **Bollinger-Bänder**, **SMA 50**, **SMA 200**,
-    **EMA 20**, **Signale** — Checkboxen im aufklappbaren Menü „Indikatoren ▾“
-    (`toggleIndiMenue()`, schließt bei Klick außerhalb; neu zeichnen via
-    `zeichneChart(daxDaten, aktiveTage)`),
+  - **Indikator-Auswahl**: zwei Auswahlfelder im aufklappbaren Menü
+    „Indikatoren ▾“ (`toggleIndiMenue()`, schließt bei Klick außerhalb).
+    Es sind **maximal zwei Indikatoren gleichzeitig** aktiv und sie müssen sich
+    unterscheiden — der im anderen Feld gewählte Eintrag wird ausgegraut.
+    Startzustand ist leer. Ein mehrliniger Indikator (Bollinger-Bänder) zählt als
+    **eine** Auswahl. Zustand: `indikatorWahl` (zwei Slots, `id` oder `null`),
+    Bedienung: `setzeIndikator(slot, id)` / `setzeIndikatorenZurueck()`,
+    Felderaufbau: `fuelleIndikatorAuswahl()`. Verfügbare Indikatoren stehen in
+    der Registry `INDIKATOREN` (siehe Abschnitt 6),
+  - **Signalen** als eigenem Schalter (`signal-check`) — sie zeichnen Marker
+    statt Linien und zählen **nicht** gegen die Zwei-Auswahl-Grenze,
   - **Signal-Markern**: ▲/▼-Dreiecke an jedem Tag, an dem der Kurs den
     SMA 200 nach oben bzw. unten kreuzt (Erkennung: `findeKreuzungen()`,
     generisch für beliebige Indikator-Serien; der Tooltip zeigt das Signal mit an),
@@ -395,9 +402,26 @@ Git-Konventionen (aus der Historie): Branches nach dem Muster
 - **Neuer API-Endpunkt:** Route in `do_GET`/`do_POST` in
   [server.py](server.py) ergänzen, Logik in [db.py](db.py) implementieren,
   `send_json()` für die Antwort verwenden.
-- **Neuer Chart-Indikator:** in `index.html` Checkbox + Legende + `<path>` im
-  SVG ergänzen und die Berechnung in `zeichneChart()` einhängen (Vorbild:
-  SMA 50/200, EMA 20, Bollinger).
+- **Neuer Chart-Indikator:** einen Eintrag in der Registry `INDIKATOREN` in
+  [index.html](index.html) ergänzen — mehr ist nicht nötig. Auswahlfelder,
+  Legende und Zeichnen leiten sich vollständig daraus ab:
+
+  ```js
+  {
+    id: "sma100", name: "SMA 100", farbe: "#0891b2",
+    linien: (vals) => [{ label: "SMA 100", werte: berechneSMA(vals, 100) }],
+  }
+  ```
+
+  `linien(alleVals)` liefert eine oder mehrere Serien in der Länge der
+  Gesamtdaten; noch nicht berechenbare Stellen sind `null` und werden beim
+  Zeichnen übersprungen. Mehrere Linien zählen als **ein** Indikator und
+  bekommen einen gemeinsamen Legendeneintrag. Optional füllt
+  `flaeche: { von, bis }` den Bereich zwischen zwei dieser Linien (Vorbild:
+  Bollinger-Bänder). `farbe` muss sich von den übrigen Einträgen unterscheiden —
+  daran hängt die farbliche Trennung der beiden Auswahl-Slots.
+  Parameter sind bewusst fest im Eintrag hinterlegt; eine Bedienoberfläche
+  dafür ist eine spätere Ausbaustufe.
 - **Neue Signal-Marker:** `findeKreuzungen(kurse, serie)` ist bewusst generisch —
   für z. B. SMA-50-Kreuzungen dieselbe Funktion mit der SMA-50-Serie aufrufen
   und im Marker-Block von `zeichneChart()` zeichnen (Vorbild: SMA-200-Signale).

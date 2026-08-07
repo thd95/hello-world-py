@@ -81,27 +81,27 @@
         <button class="range-btn" onclick="setRange(0,this)">Gesamt</button>
         <button class="range-btn" id="zoom-reset" style="display:none"
                 onclick="setzeZoomZurueck()" title="Auch per Doppelklick ins Chart">✕ Zoom aufheben</button>
-        <!-- Indikatoren als aufklappbares Menü; die Checkbox-IDs werden von
-             zeichneChart() ausgewertet und dürfen sich nicht ändern -->
+        <!-- Indikator-Auswahl als aufklappbares Menü: zwei Auswahlfelder, die sich
+             unterscheiden müssen. Die Optionen stammen aus der Registry
+             INDIKATOREN in <script>, die Felder werden von
+             fuelleIndikatorAuswahl() befüllt. -->
         <div class="dropdown" id="indi-dropdown" style="margin-left:auto">
           <button class="range-btn" id="indi-btn" onclick="toggleIndiMenue(event)">Indikatoren ▾</button>
           <div class="dropdown-menu" id="indi-menu">
-            <label class="bb-toggle" style="margin-left:0">
-              <input type="checkbox" id="bb-check" checked onchange="if(daxDaten)zeichneChart(daxDaten,aktiveTage)">
-              Bollinger (20, 2σ)
+            <label class="indi-wahl">
+              <span>Indikator 1</span>
+              <select id="indi-0" onchange="setzeIndikator(0, this.value)"></select>
             </label>
-            <label class="bb-toggle" style="margin-left:0">
-              <input type="checkbox" id="sma50-check" checked style="accent-color:#f59e0b" onchange="if(daxDaten)zeichneChart(daxDaten,aktiveTage)">
-              SMA 50
+            <label class="indi-wahl">
+              <span>Indikator 2</span>
+              <select id="indi-1" onchange="setzeIndikator(1, this.value)"></select>
             </label>
-            <label class="bb-toggle" style="margin-left:0">
-              <input type="checkbox" id="sma200-check" checked style="accent-color:#db2777" onchange="if(daxDaten)zeichneChart(daxDaten,aktiveTage)">
-              SMA 200
-            </label>
-            <label class="bb-toggle" style="margin-left:0">
-              <input type="checkbox" id="ema20-check" style="accent-color:#059669" onchange="if(daxDaten)zeichneChart(daxDaten,aktiveTage)">
-              EMA 20
-            </label>
+            <button class="indi-reset" id="indi-reset" onclick="setzeIndikatorenZurueck()">
+              Auswahl zurücksetzen
+            </button>
+            <!-- Signale sind ein Marker-Layer, kein Overlay-Indikator, und zählen
+                 daher nicht gegen die Zwei-Auswahl-Grenze. -->
+            <div class="indi-trenner"></div>
             <label class="bb-toggle" style="margin-left:0">
               <input type="checkbox" id="signal-check" checked style="accent-color:#0284c7" onchange="if(daxDaten)zeichneChart(daxDaten,aktiveTage)">
               Signale (SMA 200)
@@ -110,14 +110,8 @@
         </div>
       </div>
 
-      <div class="legende" id="legende">
-        <span><span class="swatch" style="background:#0284c7"></span>Kurs</span>
-        <span class="bb-legend"><span class="swatch" style="background:#8b5cf6"></span>Bollinger-Bänder</span>
-        <span class="ma-legend" id="sma50-legend"><span class="swatch" style="background:#f59e0b"></span>SMA 50</span>
-        <span class="ma-legend" id="sma200-legend"><span class="swatch" style="background:#db2777"></span>SMA 200</span>
-        <span class="ma-legend aus" id="ema20-legend"><span class="swatch" style="background:#059669"></span>EMA 20</span>
-        <span class="ma-legend" id="signal-legend"><span style="color:#16a34a">▲</span><span style="color:#dc2626">▼</span>&nbsp;Kreuzung Kurs / SMA 200</span>
-      </div>
+      <!-- Wird bei jedem Zeichnen aus den aktiven Indikatoren neu aufgebaut -->
+      <div class="legende" id="legende"></div>
 
       <div id="chart-wrap">
         <div class="chart-leer" id="chart-leer">Bitte „Daten laden" klicken</div>
@@ -131,15 +125,10 @@
           </defs>
           <g id="grid"></g>
           <path id="area-path" fill="url(#areaGrad)" clip-path="url(#chartClip)"/>
-          <!-- Bollinger-Bänder (zwischen Kursfläche und Kurslinie) -->
-          <path id="bb-fill"  fill="#8b5cf6" fill-opacity="0.08" clip-path="url(#chartClip)"/>
-          <path id="bb-upper" fill="none" stroke="#8b5cf6" stroke-width="1" stroke-dasharray="4 3" clip-path="url(#chartClip)"/>
-          <path id="bb-lower" fill="none" stroke="#8b5cf6" stroke-width="1" stroke-dasharray="4 3" clip-path="url(#chartClip)"/>
-          <path id="bb-mid"   fill="none" stroke="#8b5cf6" stroke-width="1" clip-path="url(#chartClip)"/>
-          <!-- Gleitende Durchschnitte (zwischen Bändern und Kurslinie) -->
-          <path id="sma50-path"  fill="none" stroke="#f59e0b" stroke-width="1.2" clip-path="url(#chartClip)"/>
-          <path id="sma200-path" fill="none" stroke="#db2777" stroke-width="1.2" clip-path="url(#chartClip)"/>
-          <path id="ema20-path"  fill="none" stroke="#059669" stroke-width="1.2" clip-path="url(#chartClip)"/>
+          <!-- Ausgewählte Indikatoren (zwischen Kursfläche und Kurslinie).
+               Wird bei jedem Zeichnen komplett neu befüllt, damit beim Entfernen
+               keine verwaisten Linien zurückbleiben. -->
+          <g id="indi-layer" clip-path="url(#chartClip)"></g>
           <path id="line-path" fill="none" stroke="#0284c7" stroke-width="1.5"
                 stroke-linejoin="round" stroke-linecap="round" clip-path="url(#chartClip)"/>
           <!-- Signifikante Punkte (z. B. Kreuzungen Kurs/SMA 200), über der Kurslinie -->
@@ -228,9 +217,16 @@
 
       <div class="stats-titel">Bedienung</div>
       <div class="dax-info" style="margin-top:0.4rem">
-        Die Indikatoren lassen sich im Chart-Tab über das Menü „Indikatoren ▾“ einzeln
-        zu- und abschalten. Die gleitenden Durchschnitte werden über die Gesamtdaten
-        berechnet und sind daher auch am linken Rand des angezeigten Ausschnitts korrekt.
+        Im Chart-Tab lassen sich über das Menü „Indikatoren ▾“ <strong>bis zu zwei
+        Indikatoren</strong> auswählen. Der Chart startet ohne Indikator; ein bereits
+        gewählter Indikator ist im zweiten Feld ausgegraut, derselbe Indikator kann also
+        nicht zweimal aktiv sein. Ein mehrliniger Indikator wie die Bollinger-Bänder zählt
+        dabei als <strong>eine</strong> Auswahl. Über „— kein Indikator —“ wird ein
+        einzelner entfernt, „Auswahl zurücksetzen“ leert beide Felder. Die Signale sind
+        ein eigener Schalter und zählen nicht gegen die Zwei-Auswahl-Grenze.
+        Die Parameter sind in dieser Version fest hinterlegt.
+        Alle Indikatoren werden über die Gesamtdaten berechnet und sind daher auch am
+        linken Rand des angezeigten Ausschnitts korrekt.
         Zoomen: mit gedrückter Maustaste ein Rechteck aufziehen; aufheben per
         „✕ Zoom aufheben“, Doppelklick ins Chart oder Zeitraum-Schnellwahl.
       </div>
@@ -534,6 +530,94 @@
       btn.classList.add("aktiv");
       if (name === "chart" && daxDaten) zeichneChart(daxDaten, aktiveTage);
       if (name === "symbole") ladeWerte();
+    }
+
+    /* ══ Indikator-Registry ══
+       Einziger Ort, an dem ein Indikator beschrieben wird — die Auswahlfelder,
+       die Legende und das Zeichnen leiten sich vollständig daraus ab. Ein neuer
+       Indikator braucht daher nur einen weiteren Eintrag hier, kein Anfassen der
+       Auswahl- oder Zeichenlogik.
+
+         id      – stabiler Schlüssel (wird als <option value> verwendet)
+         name    – Beschriftung in Auswahlfeld und Legende
+         farbe   – Linienfarbe; muss sich von den übrigen Einträgen unterscheiden
+         linien  – (alleVals) → [{ label, werte, stil? }]
+                   'werte' ist eine Serie gleicher Länge wie alleVals, noch nicht
+                   berechenbare Stellen sind null. Mehrere Linien zählen zusammen
+                   als EIN Indikator (z. B. Bollinger-Bänder).
+                   stil: "gestrichelt" für Nebenlinien, sonst durchgezogen.
+         flaeche – optional { von, bis }: Indizes zweier Linien, zwischen denen
+                   eine getönte Fläche gezeichnet wird.
+
+       Die Parameter sind in V1 bewusst fest hinterlegt (keine Bedienoberfläche
+       dafür). Alle Serien werden über die Gesamtdaten berechnet und erst beim
+       Zeichnen auf das Fenster zugeschnitten — dadurch sind sie auch am linken
+       Rand des Ausschnitts korrekt. */
+    const INDIKATOREN = [
+      {
+        id: "sma50", name: "SMA 50", farbe: "#f59e0b",
+        linien: (vals) => [{ label: "SMA 50", werte: berechneSMA(vals, 50) }],
+      },
+      {
+        id: "sma200", name: "SMA 200", farbe: "#db2777",
+        linien: (vals) => [{ label: "SMA 200", werte: berechneSMA(vals, 200) }],
+      },
+      {
+        id: "ema20", name: "EMA 20", farbe: "#059669",
+        linien: (vals) => [{ label: "EMA 20", werte: berechneEMA(vals, 20) }],
+      },
+      {
+        id: "bollinger", name: "Bollinger-Bänder (20, 2σ)", farbe: "#8b5cf6",
+        linien: (vals) => {
+          const bb = berechneBollinger(vals, 20, 2);
+          return [
+            { label: "oberes Band",  werte: bb.oben,  stil: "gestrichelt" },
+            { label: "Mittelband",   werte: bb.mitte },
+            { label: "unteres Band", werte: bb.unten, stil: "gestrichelt" },
+          ];
+        },
+        flaeche: { von: 0, bis: 2 },
+      },
+    ];
+
+    // Belegung der beiden Auswahl-Slots: Indikator-id oder null (= kein Indikator).
+    // Startzustand: beide leer, der Chart zeigt zunächst nur den Kurs.
+    let indikatorWahl = [null, null];
+
+    const indikatorNach = (id) => INDIKATOREN.find(i => i.id === id) || null;
+
+    /* Baut beide Auswahlfelder neu auf. Der im jeweils anderen Feld gewählte
+       Indikator wird ausgegraut, damit derselbe Indikator nie zweimal aktiv sein
+       kann — unabhängig davon, in welcher Reihenfolge gewählt wurde. */
+    function fuelleIndikatorAuswahl() {
+      indikatorWahl.forEach((wahl, slot) => {
+        const sel = document.getElementById("indi-" + slot);
+        const belegtVomAnderen = indikatorWahl[slot === 0 ? 1 : 0];
+        sel.innerHTML =
+          `<option value="">— kein Indikator —</option>` +
+          INDIKATOREN.map(i =>
+            `<option value="${i.id}"${i.id === wahl ? " selected" : ""}` +
+            `${i.id === belegtVomAnderen ? " disabled" : ""}>${escapeHtml(i.name)}</option>`
+          ).join("");
+      });
+      const anzahl = indikatorWahl.filter(Boolean).length;
+      document.getElementById("indi-btn").textContent =
+        anzahl ? `Indikatoren (${anzahl}) ▾` : "Indikatoren ▾";
+      document.getElementById("indi-reset").disabled = anzahl === 0;
+    }
+
+    /* Belegt einen Slot neu ("" = Indikator entfernen) und zeichnet den Chart neu. */
+    function setzeIndikator(slot, id) {
+      indikatorWahl[slot] = id || null;
+      fuelleIndikatorAuswahl();
+      if (daxDaten) zeichneChart(daxDaten, aktiveTage);
+    }
+
+    /* Entfernt beide Indikatoren — zurück in den leeren Startzustand. */
+    function setzeIndikatorenZurueck() {
+      indikatorWahl = [null, null];
+      fuelleIndikatorAuswahl();
+      if (daxDaten) zeichneChart(daxDaten, aktiveTage);
     }
 
     /* ── Indikatoren-Dropdown im Chart auf-/zuklappen ── */
@@ -1180,30 +1264,23 @@
       const xs   = daten.map((_,i) => ML + (i/(daten.length-1||1))*CW);
       const vals = daten.map(d => d.eroeffnung);
 
-      // ── Bollinger-Bänder berechnen (SMA über PERIODE, ±K·Standardabweichung) ──
-      const PERIODE = 20, K = 2;
-      const bbAn = document.getElementById("bb-check").checked && daten.length >= PERIODE;
-      const bb = berechneBollinger(vals, PERIODE, K);
-
-      // ── Gleitende Durchschnitte: über die Gesamtdaten berechnet und aufs
-      //    Fenster zugeschnitten, damit z. B. der SMA 200 auch am Fensteranfang
-      //    korrekte Werte aus der Vorgeschichte zeigt. ──
+      // ── Ausgewählte Indikatoren berechnen ──
+      // Alle Serien laufen über die Gesamtdaten und werden erst beim Zeichnen
+      // aufs Fenster zugeschnitten, damit sie auch am linken Fensterrand
+      // korrekte Werte aus der Vorgeschichte zeigen.
       const alleVals = alle.map(d => d.eroeffnung);
-      const maDefs = [
-        { pfad: "sma50-path",  check: "sma50-check",  legende: "sma50-legend",  serie: berechneSMA(alleVals, 50)  },
-        { pfad: "sma200-path", check: "sma200-check", legende: "sma200-legend", serie: berechneSMA(alleVals, 200) },
-        { pfad: "ema20-path",  check: "ema20-check",  legende: "ema20-legend",  serie: berechneEMA(alleVals, 20)  },
-      ];
-      maDefs.forEach(ma => ma.an = document.getElementById(ma.check).checked);
+      const aktive = indikatorWahl
+        .map(indikatorNach)
+        .filter(Boolean)
+        .map(def => ({ def, linien: def.linien(alleVals) }));
 
-      // Y-Bereich: bei aktiven Bändern/Durchschnitten auch deren Werte
-      // einbeziehen, damit nichts abgeschnitten wird.
+      // Y-Bereich: Werte der aktiven Indikatoren einbeziehen, damit im Fenster
+      // nichts abgeschnitten wird.
       let alleWerte = vals.slice();
-      if (bbAn) alleWerte = alleWerte.concat(bb.oben.filter(v => v != null), bb.unten.filter(v => v != null));
-      maDefs.forEach(ma => {
-        if (ma.an) alleWerte = alleWerte.concat(
-          ma.serie.slice(offset, offset + daten.length).filter(v => v != null));
-      });
+      for (const { linien } of aktive)
+        for (const linie of linien)
+          alleWerte = alleWerte.concat(
+            linie.werte.slice(offset, offset + daten.length).filter(v => v != null));
       const vMin = Math.min(...alleWerte), vMax = Math.max(...alleWerte);
       const pad  = (vMax - vMin) * 0.05 || 1;
       const yMin = vMin - pad, yMax = vMax + pad;
@@ -1239,42 +1316,66 @@
       document.getElementById("area-path").setAttribute("d",
         `M${xs[0]},${MT+CH} L` + pts.join("L") + ` L${xs.at(-1)},${MT+CH} Z`);
 
-      // ── Bollinger-Bänder zeichnen ──
-      const bbFill  = document.getElementById("bb-fill");
-      const bbOben  = document.getElementById("bb-upper");
-      const bbUnten = document.getElementById("bb-lower");
-      const bbMitte = document.getElementById("bb-mid");
-      if (bbAn) {
-        // nur Punkte ab Index PERIODE-1 haben gültige Bandwerte
-        const idx    = [];
-        for (let i = 0; i < daten.length; i++) if (bb.mitte[i] != null) idx.push(i);
-        const linie  = (arr) => "M" + idx.map(i => `${xs[i]},${yS(arr[i])}`).join("L");
-        bbMitte.setAttribute("d", linie(bb.mitte));
-        bbOben.setAttribute("d",  linie(bb.oben));
-        bbUnten.setAttribute("d", linie(bb.unten));
-        // Fläche: oberes Band hin, unteres Band zurück
-        const obenPts  = idx.map(i => `${xs[i]},${yS(bb.oben[i])}`);
-        const untenPts = idx.slice().reverse().map(i => `${xs[i]},${yS(bb.unten[i])}`);
-        bbFill.setAttribute("d", "M" + obenPts.join("L") + "L" + untenPts.join("L") + "Z");
-        [bbFill, bbOben, bbUnten, bbMitte].forEach(e => e.style.display = "block");
-      } else {
-        [bbFill, bbOben, bbUnten, bbMitte].forEach(e => e.style.display = "none");
-      }
-      document.getElementById("legende").querySelector(".bb-legend")
-        .classList.toggle("aus", !bbAn);
+      // ── Indikatoren zeichnen ──
+      // Der Layer wird komplett neu aufgebaut; entfernte Indikatoren können so
+      // keine verwaisten Linien hinterlassen. Punkte ohne Wert (Fenster der
+      // Berechnung noch nicht voll) werden übersprungen.
+      const layer = document.getElementById("indi-layer");
+      const legendenTeile = [];
+      layer.innerHTML = "";
 
-      // ── Gleitende Durchschnitte zeichnen ──
-      for (const ma of maDefs) {
-        const el = document.getElementById(ma.pfad);
-        const idx = [];
-        if (ma.an)
+      for (const { def, linien } of aktive) {
+        // sichtbare Indizes je Linie, umgerechnet auf das Fenster
+        const idxVon = (werte) => {
+          const idx = [];
           for (let i = 0; i < daten.length; i++)
-            if (ma.serie[offset + i] != null) idx.push(i);
-        const sichtbar = ma.an && idx.length > 1;
-        if (sichtbar)
-          el.setAttribute("d", "M" + idx.map(i => `${xs[i]},${yS(ma.serie[offset + i])}`).join("L"));
-        el.style.display = sichtbar ? "block" : "none";
-        document.getElementById(ma.legende).classList.toggle("aus", !sichtbar);
+            if (werte[offset + i] != null) idx.push(i);
+          return idx;
+        };
+        const pfad = (werte, idx) =>
+          "M" + idx.map(i => `${xs[i]},${yS(werte[offset + i])}`).join("L");
+
+        // Fläche zwischen zwei Linien (z. B. zwischen oberem und unterem Band)
+        if (def.flaeche) {
+          const oben  = linien[def.flaeche.von].werte;
+          const unten = linien[def.flaeche.bis].werte;
+          const idx   = idxVon(oben).filter(i => unten[offset + i] != null);
+          if (idx.length > 1) {
+            const hin    = idx.map(i => `${xs[i]},${yS(oben[offset + i])}`);
+            const zurueck = idx.slice().reverse().map(i => `${xs[i]},${yS(unten[offset + i])}`);
+            layer.innerHTML +=
+              `<path d="M${hin.join("L")}L${zurueck.join("L")}Z" fill="${def.farbe}" fill-opacity="0.08"/>`;
+          }
+        }
+
+        const gezeichnet = [];
+        for (const linie of linien) {
+          const idx = idxVon(linie.werte);
+          if (idx.length < 2) continue;   // zu wenig Daten für diese Linie
+          const gestrichelt = linie.stil === "gestrichelt";
+          layer.innerHTML +=
+            `<path d="${pfad(linie.werte, idx)}" fill="none" stroke="${def.farbe}" ` +
+            `stroke-width="${gestrichelt ? 1 : 1.2}"` +
+            `${gestrichelt ? ' stroke-dasharray="4 3"' : ""}/>`;
+          gezeichnet.push(linie.label);
+        }
+
+        // Legendeneintrag: einer je Indikator. Bei mehrlinigen Indikatoren
+        // werden die Linien darin aufgezählt — sie gehören zu einer Auswahl.
+        // Reicht die Kurshistorie für die Berechnung nicht (z. B. SMA 200 bei
+        // einem frisch angelegten Wert), bleibt der Eintrag als Hinweis stehen,
+        // damit die Auswahl nicht wirkungslos erscheint.
+        const linienText = gezeichnet.length > 1
+          ? ` <span class="legende-linien">(${gezeichnet.map(escapeHtml).join(", ")})</span>`
+          : "";
+        legendenTeile.push(
+          `<span${gezeichnet.length ? "" : ' class="aus"'}>` +
+          `<span class="swatch" style="background:${def.farbe}"></span>` +
+          `${escapeHtml(def.name)}` +
+          (gezeichnet.length
+            ? linienText
+            : ` <span class="legende-linien">(zu wenig Daten)</span>`) +
+          `</span>`);
       }
 
       // ── Signifikante Punkte: Kurs kreuzt den SMA 200 ──
@@ -1286,7 +1387,8 @@
       marker.innerHTML = "";
       const sigAn = document.getElementById("signal-check").checked;
       if (sigAn) {
-        const sma200 = maDefs.find(ma => ma.pfad === "sma200-path").serie;
+        // eigene Berechnung — die Signale hängen nicht an der Indikator-Auswahl
+        const sma200 = berechneSMA(alleVals, 200);
         for (const { index, richtung } of findeKreuzungen(alleVals, sma200)) {
           const i = index - offset;
           if (i < 0 || i >= daten.length) continue;
@@ -1297,7 +1399,14 @@
             : `<path d="M${x},${y - 5} L${x - 5},${y - 13} L${x + 5},${y - 13} Z" fill="#dc2626"/>`;
         }
       }
-      document.getElementById("signal-legend").classList.toggle("aus", !sigAn);
+      // ── Legende neu aufbauen: Kurs, aktive Indikatoren, ggf. Signale ──
+      document.getElementById("legende").innerHTML =
+        `<span><span class="swatch" style="background:#0284c7"></span>Kurs</span>` +
+        legendenTeile.join("") +
+        (sigAn
+          ? `<span><span style="color:#16a34a">▲</span><span style="color:#dc2626">▼</span>` +
+            `&nbsp;Kreuzung Kurs / SMA 200</span>`
+          : "");
 
       const hit = document.getElementById("hit-area");
       hit.setAttribute("x", ML); hit.setAttribute("y", MT);
@@ -1411,9 +1520,11 @@
         zeichneVerlauf(simVerlauf.tage, simVerlauf.kapital, simVerlauf.trades);
     });
 
-    // Beim Start das Dropdown und die Symbolliste aus der Datenbank befüllen
-    // und die Trigger-Parameterfelder passend zur Vorauswahl schalten
+    // Beim Start das Dropdown und die Symbolliste aus der Datenbank befüllen,
+    // die Indikator-Auswahl im leeren Zustand aufbauen und die
+    // Trigger-Parameterfelder passend zur Vorauswahl schalten
     ladeWerte();
+    fuelleIndikatorAuswahl();
     zeigeSimFelder();
   </script>
 

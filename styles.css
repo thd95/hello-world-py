@@ -193,12 +193,34 @@ td.kurs { color: var(--kurs); font-weight: 600; text-align: right; font-variant-
   flex-direction: column; gap: 0.55rem; white-space: nowrap;
 }
 .dropdown-menu.offen { display: flex; }
+.dropdown-menu { min-width: 230px; }
 .dropdown .range-btn.aktiv-menue { color: var(--primaer); border-color: var(--primaer); }
+
+/* Indikator-Auswahl: zwei Felder + Zurücksetzen */
+.indi-wahl {
+  display: flex; flex-direction: column; gap: 0.25rem;
+  font-size: 0.72rem; color: var(--text-mittel);
+}
+.indi-wahl select {
+  font: inherit; font-size: 0.78rem; color: var(--text);
+  padding: 0.3rem 0.4rem; border: 1px solid var(--rand); border-radius: 7px;
+  background: var(--karte); cursor: pointer;
+}
+.indi-wahl select option:disabled { color: var(--text-leise); }
+.indi-reset {
+  font: inherit; font-size: 0.74rem; color: var(--text-mittel);
+  padding: 0.3rem 0.5rem; border: 1px solid var(--rand); border-radius: 7px;
+  background: var(--karte); cursor: pointer;
+}
+.indi-reset:hover:not(:disabled) { color: var(--primaer); border-color: var(--primaer); }
+.indi-reset:disabled { opacity: 0.45; cursor: default; }
+.indi-trenner { border-top: 1px solid var(--rand); margin: 0.1rem 0; }
+
 .legende { display: flex; flex-wrap: wrap; gap: 1.2rem; margin-bottom: 0.8rem; font-size: 0.75rem; color: var(--text-mittel); }
 .legende span { display: inline-flex; align-items: center; gap: 0.4rem; }
+.legende .legende-linien { color: var(--text-leise); }
+.legende span.aus { opacity: 0.4; }
 .swatch { width: 14px; height: 3px; border-radius: 2px; display: inline-block; }
-.bb-legend.aus { opacity: 0.3; }
-.ma-legend.aus { opacity: 0.3; }
 
 /* ── Mittelwert-Kennzahlen ── */
 .stats { display: flex; flex-wrap: wrap; gap: 0.5rem; }
