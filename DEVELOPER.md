@@ -243,7 +243,8 @@ Das **Chart** im Detail:
     aufheben per „✕ Zoom aufheben“-Button, Doppelklick ins Chart oder
     Zeitraum-Schnellwahl,
   - **Indikator-Auswahl**: zwei Auswahlfelder im aufklappbaren Menü
-    „Indikatoren ▾“ (`toggleIndiMenue()`, schließt bei Klick außerhalb).
+    „Indikatoren ▾“. Beide Menüs teilen sich `toggleMenue(name, event)` — es ist
+    höchstens eines offen, Klick außerhalb schließt.
     Es sind **maximal zwei Indikatoren gleichzeitig** aktiv und sie müssen sich
     unterscheiden — der im anderen Feld gewählte Eintrag wird ausgegraut.
     Startzustand ist leer. Ein mehrliniger Indikator (Bollinger-Bänder) zählt als
@@ -251,9 +252,9 @@ Das **Chart** im Detail:
     Bedienung: `setzeIndikator(slot, id)` / `setzeIndikatorenZurueck()`,
     Felderaufbau: `fuelleIndikatorAuswahl()`. Verfügbare Indikatoren stehen in
     der Registry `INDIKATOREN` (siehe Abschnitt 6),
-  - **Signal-Auswahl**: zwei weitere Auswahlfelder im selben Menü — je eines für
-    **Kaufsignal** und **Verkaufssignal**, unabhängig voneinander und ebenfalls
-    leer startend. Anders als bei den Overlays gibt es **keine** Ausschlussregel:
+  - **Signal-Auswahl**: eigenes Menü „Signale ▾“ neben dem Indikator-Menü, mit je
+    einem Feld für **Kaufsignal** und **Verkaufssignal**, unabhängig voneinander
+    und ebenfalls leer startend. Anders als bei den Overlays gibt es **keine** Ausschlussregel:
     beide dürfen auf demselben Indikator beruhen. Zustand: `signalWahl`
     (`{ kauf, verkauf }`), Bedienung: `setzeSignal(art, id)` /
     `setzeSignaleZurueck()`, Felderaufbau: `fuelleSignalAuswahl()`. Verfügbare

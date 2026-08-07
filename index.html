@@ -81,15 +81,14 @@
         <button class="range-btn" onclick="setRange(0,this)">Gesamt</button>
         <button class="range-btn" id="zoom-reset" style="display:none"
                 onclick="setzeZoomZurueck()" title="Auch per Doppelklick ins Chart">✕ Zoom aufheben</button>
-        <!-- Aufklappbares Menü mit zwei getrennten Auswahlbereichen:
-             Overlay-Indikatoren (max. 2, müssen sich unterscheiden) und
-             Handelssignale (Kauf/Verkauf, unabhängig voneinander, gleiche
-             Indikator-Grundlage erlaubt). Die Optionen stammen aus den
-             Registries INDIKATOREN bzw. SIGNALE in <script>. -->
+        <!-- Zwei eigenständige Auswahlfelder: Overlay-Indikatoren (max. 2,
+             müssen sich unterscheiden) und Handelssignale (Kauf/Verkauf,
+             unabhängig voneinander, gleiche Indikator-Grundlage erlaubt).
+             Die Optionen stammen aus den Registries INDIKATOREN bzw. SIGNALE
+             in <script>. -->
         <div class="dropdown" id="indi-dropdown" style="margin-left:auto">
-          <button class="range-btn" id="indi-btn" onclick="toggleIndiMenue(event)">Indikatoren &amp; Signale ▾</button>
+          <button class="range-btn" id="indi-btn" onclick="toggleMenue('indi', event)">Indikatoren ▾</button>
           <div class="dropdown-menu" id="indi-menu">
-            <div class="indi-gruppe">Indikatoren (max. 2)</div>
             <label class="indi-wahl">
               <span>Indikator 1</span>
               <select id="indi-0" onchange="setzeIndikator(0, this.value)"></select>
@@ -101,10 +100,12 @@
             <button class="indi-reset" id="indi-reset" onclick="setzeIndikatorenZurueck()">
               Auswahl zurücksetzen
             </button>
+          </div>
+        </div>
 
-            <div class="indi-trenner"></div>
-
-            <div class="indi-gruppe">Signale</div>
+        <div class="dropdown" id="signal-dropdown">
+          <button class="range-btn" id="signal-btn" onclick="toggleMenue('signal', event)">Signale ▾</button>
+          <div class="dropdown-menu" id="signal-menu">
             <label class="indi-wahl">
               <span>Kaufsignal</span>
               <select id="signal-kauf" onchange="setzeSignal('kauf', this.value)"></select>
@@ -285,20 +286,20 @@
 
       <div class="stats-titel">Bedienung</div>
       <div class="dax-info" style="margin-top:0.4rem">
-        Im Chart-Tab führt das Menü „Indikatoren &amp; Signale ▾“ zwei getrennte
-        Auswahlbereiche.<br><br>
-        <strong>Indikatoren:</strong> bis zu <strong>zwei</strong> gleichzeitig. Der Chart
+        Im Chart-Tab gibt es dafür zwei eigene Auswahlfelder: „Indikatoren ▾“ und
+        „Signale ▾“.<br><br>
+        <strong>Indikatoren ▾:</strong> bis zu <strong>zwei</strong> gleichzeitig. Der Chart
         startet ohne Indikator; ein bereits gewählter Indikator ist im zweiten Feld
         ausgegraut, derselbe Indikator kann also nicht zweimal aktiv sein. Ein mehrliniger
         Indikator wie die Bollinger-Bänder zählt dabei als <strong>eine</strong> Auswahl.<br><br>
-        <strong>Signale:</strong> je ein Feld für Kauf- und Verkaufssignal, unabhängig
+        <strong>Signale ▾:</strong> je ein Feld für Kauf- und Verkaufssignal, unabhängig
         voneinander wählbar. Hier gibt es <em>keine</em> Ausschlussregel — beide dürfen auf
         demselben Indikator beruhen (z. B. SMA 200 nach oben als Kauf-, nach unten als
         Verkaufssignal). Der zugrunde liegende Indikator muss nicht als Overlay sichtbar
         sein; er wird dann nur im Hintergrund berechnet. Treffen Kauf- und Verkaufspfeil
         auf denselben Tag, sitzt der Kaufpfeil unter, der Verkaufspfeil über dem Kurspunkt.<br><br>
-        In beiden Bereichen entfernt „— kein Indikator —“ bzw. „— kein Signal —“ eine
-        einzelne Auswahl, „Auswahl zurücksetzen“ leert den jeweiligen Bereich.
+        In beiden Feldern entfernt „— kein Indikator —“ bzw. „— kein Signal —“ eine
+        einzelne Auswahl, „Auswahl zurücksetzen“ leert das jeweilige Feld.
         Alle Parameter und Signal-Bedingungen sind in dieser Version fest hinterlegt.
         Alle Indikatoren werden über die Gesamtdaten berechnet und sind daher auch am
         linken Rand des angezeigten Ausschnitts korrekt.
@@ -675,9 +676,10 @@
             `${i.id === belegtVomAnderen ? " disabled" : ""}>${escapeHtml(i.name)}</option>`
           ).join("");
       });
-      document.getElementById("indi-reset").disabled =
-        indikatorWahl.filter(Boolean).length === 0;
-      aktualisiereMenueKnopf();
+      const anzahl = indikatorWahl.filter(Boolean).length;
+      document.getElementById("indi-btn").textContent =
+        anzahl ? `Indikatoren (${anzahl}) ▾` : "Indikatoren ▾";
+      document.getElementById("indi-reset").disabled = anzahl === 0;
     }
 
     /* Belegt einen Slot neu ("" = Indikator entfernen) und zeichnet den Chart neu. */
@@ -760,9 +762,10 @@
             `${escapeHtml(s.name)}</option>`
           ).join("");
       }
-      document.getElementById("signal-reset").disabled =
-        !signalWahl.kauf && !signalWahl.verkauf;
-      aktualisiereMenueKnopf();
+      const anzahl = [signalWahl.kauf, signalWahl.verkauf].filter(Boolean).length;
+      document.getElementById("signal-btn").textContent =
+        anzahl ? `Signale (${anzahl}) ▾` : "Signale ▾";
+      document.getElementById("signal-reset").disabled = anzahl === 0;
     }
 
     /* Belegt ein Signalfeld neu ("" = Signal entfernen). Wird ein Signal
@@ -781,24 +784,21 @@
       if (daxDaten) zeichneChart(daxDaten, aktiveTage);
     }
 
-    /* Zeigt am Menüknopf, wie viele Einträge insgesamt ausgewählt sind. */
-    function aktualisiereMenueKnopf() {
-      const anzahl = indikatorWahl.filter(Boolean).length
-                   + [signalWahl.kauf, signalWahl.verkauf].filter(Boolean).length;
-      document.getElementById("indi-btn").textContent =
-        anzahl ? `Indikatoren & Signale (${anzahl}) ▾` : "Indikatoren & Signale ▾";
-    }
-
-    /* ── Indikatoren-Dropdown im Chart auf-/zuklappen ── */
-    function toggleIndiMenue(e) {
+    /* ── Auswahlfelder im Chart auf-/zuklappen ──
+       'name' ist das Präfix der Menü-id ("indi" bzw. "signal"). Es ist immer
+       höchstens ein Menü offen; das Öffnen des einen schließt das andere. */
+    function toggleMenue(name, e) {
       e.stopPropagation();   // sonst schließt der Dokument-Klick-Handler sofort wieder
-      document.getElementById("indi-menu").classList.toggle("offen");
+      const menu  = document.getElementById(name + "-menu");
+      const offen = menu.classList.contains("offen");
+      document.querySelectorAll(".dropdown-menu.offen").forEach(m => m.classList.remove("offen"));
+      menu.classList.toggle("offen", !offen);
     }
-    // Klick außerhalb schließt das Menü; Klicks im Menü (Checkboxen) lassen es offen
+    // Klick außerhalb schließt das Menü; Klicks im Menü selbst lassen es offen
     document.addEventListener("click", (e) => {
-      const menu = document.getElementById("indi-menu");
-      if (menu.classList.contains("offen") && !e.target.closest("#indi-dropdown"))
-        menu.classList.remove("offen");
+      document.querySelectorAll(".dropdown-menu.offen").forEach(menu => {
+        if (!menu.closest(".dropdown").contains(e.target)) menu.classList.remove("offen");
+      });
     });
 
     /* ── Symbole: Liste aus der DB laden (füllt Dropdown und Symbolliste) ── */
